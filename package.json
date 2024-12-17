@@ -37,7 +37,7 @@
     "@types/source-map-support": "0.5.7",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "6.7.0",
-    "aws-cdk": "2.147.0",
+    "aws-cdk": "2.148.1",
     "concurrently": "8.2.2",
     "cz-conventional-changelog": "3.3.0",
     "eslint": "^8.57.0",
