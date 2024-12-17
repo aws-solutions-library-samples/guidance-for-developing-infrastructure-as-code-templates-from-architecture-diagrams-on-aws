@@ -1,0 +1,142 @@
+architecture_description_prompt: |
+  "   Task: Analyze the provided AWS architecture diagram and create a detailed breakdown following these strict guidelines:
+      #### 1. Use Case Analysis
+      - Create a section titled 'Use Case Description'
+      - Explain the business scenario and technical solution the architecture addresses
+      - Identify the core business objectives
+      
+      #### 2. Module Classification and Resource Assignment
+      Before detailed analysis, strictly assign each AWS resource to ONE of these module categories:
+      a) AWS Account Boundaries
+      b) Functional Application Components
+      c) Environment Segregation (Dev/Staging/Prod)
+      d) Dedicated Networking Module
+      
+      For each module, document:
+      - Module name and purpose
+      - **Exclusive** resource inventory with exact counts
+      - Individual resource names (each resource appears in only one module)
+      - Resource functions and purposes
+      - Key resource interactions within the module
+      
+      #### 3. Resource Documentation Format
+      All resources MUST be documented using the format specified above. It is a CRITICAL REQUIREMENT.
+      Any deviation from this format will be considered non-compliant.
+      
+      #### 4. Special Requirements
+      1. All networking components (VPCs, Subnets, etc.) belong EXCLUSIVELY to "Networking Module"
+      2. Exclude non-AWS cloud components
+      3. Use clear resource naming based on diagram context
+      4. Double-verify all resource counts
+      
+      #### 5. Quality Validation Checklist
+      □ Confirm each resource is assigned to exactly one module
+      □ Verify no resource appears in multiple modules
+      □ Validate all resource counts are accurate
+      □ Ensure all resource names are documented
+      □ Verify all module interactions are captured
+      □ Confirm networking components are exclusively in Networking Module
+      □ Verify documentation format compliance for EVERY resource
+      □ Confirm all required fields are populated in documentation
+      □ Validate resource naming consistency
+      □ Check interaction documentation completeness
+      
+      #### 6. Documentation Format Compliance Checklist
+      □ Module name is clearly stated
+      □ Resource type is specified with exact count
+      □ All resource names are listed
+      □ Functions are described specifically for the module context
+      □ All interactions are documented with connecting resources
+      □ Format follows the exact template structure
+      □ No missing or additional fields
+      □ Consistent indentation and formatting
+      
+      #### 7. Final Verification
+      Before submission, perform a cross-check to ensure:
+      - Total resources counted = Total unique resources in diagram
+      - Zero instances of resource duplication across modules
+      - Complete adherence to single-module assignment rule
+      - 100% compliance with documentation format
+      - All checklists are completed and verified
+      - No resources are missing documentation
+      - All documentation follows the mandatory format "
+modules_description_prompt: |
+  "Objective: Transform the provided AWS architecture description into a well-structured JSON format, preserving key information and adhering to specific formatting requirements.
+
+  Context: You are a highly skilled AI assistant with a deep understanding of JSON data structures and AWS cloud architectures. You are provided with a textual description of an AWS architecture, broken down into modules.
+
+  Instructions:
+
+  JSON Structure: Generate a JSON object using the following structure:
+
+  "use case description": (String) As the first key-value pair, include the "use case description" from the provided text verbatim.
+
+  [Module Name]: (String) For each module identified in the text, create a key using the module's name as it appears (e.g., "Web UI Module"). The value for each module key should be a single string that comprehensively describes the module, including the resources mentioned within it, the module's overall purpose in the architecture and the key interactions described in that module.
+
+  "Module List": (List) As the final key-value pair, include a key named "Module List." The value should be a Python-style list (using square brackets [] and comma-separated elements) containing the names of each module in the architecture, in the same order they appear in the original text.
+
+  Accuracy and Completeness:
+
+  Resource Counts: Ensure that the counts of individual AWS resources mentioned in the original description for each module are accurately reflected in the generated JSON.
+
+  Module Descriptions: Faithfully preserve the content of the module descriptions from the input text. Do not alter, add, or omit any information from the original descriptions.
+
+  Formatting:
+
+  Adhere to strict JSON syntax, using double quotes for keys and string values.
+
+  Ensure proper indentation for readability. Do not return any other supporting text apart from the JSON string
+
+  Example Output (Illustrative, adjust based on provided description):
+
+  {
+    "use case description": "This is the use case description from the input text...",
+    "Web UI Module": "This module includes 1 CloudFront distribution, 2 S3 buckets, and handles user interface...", 
+    "Data Module": "This module contains a DynamoDB table for data storage...",
+    "Module List": ["Web UI Module", "Data Module", ...] 
+  }"
+staging_prompt_template: |
+    " Please create an AWS CDK production file (app.py) with the following specifications: 
+      Directory Structure: - app.py (main staging file to be created) -
+      stack_a.py - stack_b.py - stack_c.py - stack_d.py 
+      
+      Stack Names to Import and Deploy: - StackA - StackB - StackC - StackD 
+
+      Requirements: 1. The file should import all necessary AWS CDK modules
+      2. Import all stack modules from their respective files 
+      3. Initialize the CDK App 
+      4. Create an AWS environment configuration 
+      5. Instantiate all stacks with proper naming 
+      6. Include basic error handling 
+      7. Include the app.synth() call 
+      8. Add comments for clarity 
+      9. Include optional stack dependencies setup (commented) 
+      10.Return only the codeblock without any other text before or after the codeblock
+      11. Include basic tags setup Additional Considerations: 
+      - Make it production-ready 
+      - Follow AWS CDK best practices
+      - Include type hints
+      - Make it modular and maintainable 
+      - Include environment variable support. 
+      - Absolutely make sure to exclude any other supporting text , notes or comments in your response except the codeblock."
+deployment_sequence_prompt: |
+    "You are an AWS Solutions Architect specializing in AWS CDK infrastructure deployment. Your task is to:
+    1. Analyze the provided AWS architecture components/modules described in a JSON structure2. Determine the optimal deployment sequence based on dependencies and AWS best practices3. Modify the JSON by:   - Reordering the items in the "Module List" field to reflect the correct deployment sequence   - Replacing the word "module" with "Stack" only within the pythonic list in the "Module List" field   - Preserving all other JSON elements exactly as they are.
+
+    Requirements:
+
+    - Consider AWS resource dependencies and infrastructure prerequisites- Follow AWS CDK best practices for stack deployment ordering
+    - Maintain data integrity of the original JSON structure
+    - Return only the modified JSON without additional commentary
+    Validation Steps:1. Before modification:   
+      - Store a copy of the original JSON
+      - Create checksums of all fields except "Module List"
+    2. After modification:  
+
+        - Verify checksums of unmodified fields match the original   
+        - Confirm only "Module List" field has been altered  
+        - Validate JSON structure remains intact3. Verification rules:   - All key-value pairs outside "Module List" must be identical to input   - JSON structure and formatting must remain unchanged   - Only allowed changes are within "Module List" field
+    Constraints:- Only modify the order of items in the "Module List" field- Only replace "module" with "Stack" within the specified list- Preserve all other JSON fields and formatting- Do not add explanations or notes to the output
+    Output Format:
+    - Return only the modified JSON string- No additional text or explanations
+    - Must pass all validation checks before output"

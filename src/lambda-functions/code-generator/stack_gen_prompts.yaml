@@ -1,0 +1,122 @@
+module_prompt_suffix: |
+  """"
+  While generating the CDK stack, ensure the following service rules are applied, if the following services are present in the description above.  
+
+  For each stack, the following rules should be applied:
+  1. All s3 buckets should have:a) Bucket Names constructed with the account number and stackname included in the name, to ensure uniqueness b)  KMS encryption applied on the bucket and KMS key rotation enabled. 
+  2. All lambda functions should have:a) X ray tracing enabled b)  Use ARM architectures c) Power tools enabled. 
+  3. Do not Instantiate the stack. 
+  4. Do not create the CDK app within the generaed code.
+  4. Do not add the app.synth() call. 
+
+ 
+
+  Do not return any text other than the codeblock. Double check that absolutely no other text is provided apart from the requested codeblock
+  """"
+step_2: |
+  """
+    Role: You are a cloud infrastructure expert specializing in AWS IAM permissions analysis. I will provide you with an AWS CDK stack code.
+
+    Task: Analyze the provided AWS CDK stack and generate a focused IAM roles and permissions assessment, excluding certain role types.
+
+    Specific Requirements:
+    1. Examine each component of the provided stack
+    2. For each identified resource that requires IAM roles, EXCLUDE the following IAM roles:
+       - S3 bucket management roles
+       - S3 access-specific roles
+       - CDK deployment roles
+       - KMS key management roles
+
+    3. Output the remaining required roles in strict JSON format:
+    {
+        "roles_list": {
+            "IAM Roles and Permissions": [
+                {
+                    "Role": "<role_name>",
+                    "Policies": [
+                        "<permission_1>",
+                        "<permission_2>"
+                    ]
+                }
+            ]
+        }
+    }
+
+    Important Guidelines:
+    - Return ONLY the JSON structure
+    - EXCLUDE all S3-specific roles and permissions [[1]]
+    - EXCLUDE all KMS management roles [[7]]
+    - Follow AWS least-privilege principle
+    - Focus only on application-specific roles
+    - Validate JSON syntax before output
+    - If a role requires minimal S3 or KMS access as part of its main function, include only those specific permissions within that role rather than creating separate roles 
+    - If the roles list is empty, return the input code block as i without introducing any hanges. DO NOT add any example IAM roles or policies.
+
+    Input Code:
+    
+  """
+step_3: |
+  ""
+   System: You are an expert AWS CDK developer specializing in IAM security configurations.
+
+    User: I will provide you with:
+    1. An existing AWS CDK Stack code in {code_language}
+    2. A list of IAM roles
+    3. Associated permissions for each role
+
+    Task: Transform this input into a complete AWS CDK stack implementation by:
+    - Analyzing the existing stack code
+    - Creating CDK constructs for each specified IAM role
+    - Implementing all required IAM policies based on the provided permissions
+    - Integrating the new IAM configurations into the existing stack
+
+    Requirements:
+    - Output only the complete, updated code block
+    - Use AWS CDK best practices for IAM implementations
+    - Maintain existing stack functionality while adding the IAM configurations
+    - Include all necessary imports
+    - Ensure proper policy syntax and permissions structure
+
+    Response Format:
+    - Return ONLY the complete code block
+    - No explanatory text
+    - No comments outside the code
+    - Use proper code formatting with correct indentation
+  ""
+step_4: |
+  ""
+    System: You are an AWS CDK validation specialist with expertise in the latest CDK versions and IAM policy validation.
+
+    User: I will provide an AWS CDK Stack code in {code_language}.
+
+    Validation Tasks:
+    1. CDK Version Compatibility Check
+    - Verify each construct against the latest CDK version
+    - Validate all construct attributes for compatibility
+    - Identify any deprecated or outdated components and correct them as necessary.
+    - Do not include any comments on the CDK version compatibility check in the response before or after the codeblock
+
+    2. IAM Policy Validation
+    - Verify syntax of all IAM policies
+    - Confirm policy structure matches AWS best practices
+    - Check for valid AWS service actions and resources
+    - Validate policy effect statements
+    - Do not include any comments on the policy validation in the response before or after the codeblock
+
+    3. Code Update Requirements
+    - Update constructs to latest CDK version if needed
+    - Fix any invalid IAM policies
+    - Maintain existing functionality
+    - Preserve original code structure
+    - Do not include any comments on the code updates in the response before or after the codeblock
+
+    Output Requirements:
+    - Return ONLY the complete code block without any additional comments before or after the codeblock.
+    - Format: Valid {code_language} syntax
+    - Include all necessary imports
+    - Maintain proper indentation
+    - Do not include any additional comments, notes or explanatory text, comments before or after the code block
+    - If no updates needed, return original code unchanged
+    - Verify no unintended modifications. No comments on the verification are seen in the response
+  
+  ""
