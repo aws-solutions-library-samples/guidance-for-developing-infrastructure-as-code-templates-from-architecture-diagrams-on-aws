@@ -22,7 +22,7 @@ const frontEndStack = new FrontEndStack(app, `${AppConfig.applicationName}-Front
 
 new ProcessingStack(app, `${AppConfig.applicationName}-ProcessingStack`, {
   env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
-  recipientEmailAddresses: ['bpawlow@amazon.com', 'srikrik@amazon.ch', 'potus@amazon.ch'],
+  recipientEmailAddresses: [],
   diagramStorageBucket: storageStack.diagramStorageBucket,
   codeOutputBucket: storageStack.codeOutputBucket,
   responderLambda: frontEndStack.responderLambda,

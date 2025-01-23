@@ -17,7 +17,7 @@ To demo a working example of this application without deploying your own copy, y
 - Approved Bedrock model access to Claude 3 Sonnet
 
 ### Clone Repository
-Clone the Gitlab repo.
+Clone the Github repo.
 ```bash
 git clone git@ssh.gitlab.aws.dev:2024-data-hackathon/HACK-276.git
 ```

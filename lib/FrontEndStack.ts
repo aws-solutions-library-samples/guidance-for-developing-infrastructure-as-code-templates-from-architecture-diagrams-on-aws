@@ -27,10 +27,7 @@ export class FrontEndStack extends cdk.Stack {
     });
 
     // Add inbound rules
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(8501), 'Allow inbound TCP traffic on port 8501');
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), 'Allow inbound HTTP traffic on port 80');
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), 'Allow inbound HTTP traffic on port 443');
-
 
     // Create Lambda function
     this.responderLambda = new lambda.DockerImageFunction(this, 'streamlitResponder', {

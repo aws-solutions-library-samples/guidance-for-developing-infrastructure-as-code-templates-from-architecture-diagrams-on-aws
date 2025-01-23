@@ -56,9 +56,6 @@ export class ProcessingStack extends cdk.Stack {
     processingLambda.role?.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonBedrockFullAccess')
     );
-    processingLambda.role?.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSESFullAccess')
-    );
 
     const lambdaProcessingTask = new tasks.LambdaInvoke(this, 'Processing', {
       lambdaFunction: processingLambda,
