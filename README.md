@@ -48,16 +48,17 @@ This currently includes: us-east-1, us-west-2, eu-central-1, ap-northeast-1, and
 ## Deployment Steps
 
 ### 1. Clone Repository
-Clone the Gitlab repo.
+Clone the Github repo.
 ```bash
-git clone git@ssh.gitlab.aws.dev:2024-data-hackathon/HACK-276.git
+git clone git@github.com:aws-solutions-library-samples/guidance-for-developing-infrastructure-as-code-templates-from-architecture-diagrams-on-aws.git
 ```
 ### 2. Edit configuration files
 Open the project folder in your IDE and edit the following files:
 - export_vars.sh - This file contains all of the necessary deployment configuration env variables. Update the placeholder values with the correct ones for your targeted deployment account.
 - (OPTIONAL) package.json  - The config section of this file can be modified to change the Application Name and CDK Qualifier
 - (OPTIONAL) cdk.json - The CDK Qualifier must also be updated here if modifying.
-- (OPTIONAL) bin/datahackathon.ts - Update the recipientEmailAddresses array under the ProcessingStack with user emails who wish to receive notifications when generated code is commited. 
+- (OPTIONAL) bin/datahackathon.ts - Update the recipientEmailAddresses array under the ProcessingStack with user emails who wish to receive notifications when newly generated code is uploaded to the S3 output bucket. 
+
 ### 3. Make the script executable and source the variables
 Open your IDE CLI and run the follwing commands:
 ```bash
@@ -79,6 +80,8 @@ Deploy the project using CDK.
 ```bash
 cdk deploy --all --require-approval never
 ```
+### 7. Upload API Key
+In the AWS Console, navigate to Secrets Manager and copy your Perplexity API key to the newly created Secrets Manager secret named 'ApiKeySecret'.
 
 ## Deployment Validation
 Open CloudFormation console and verify the status of the template with the name starting with “A2C”.
@@ -95,30 +98,32 @@ Verify that the web page is functioning correctly by navigating to the CloudForm
 4. Once the Code synthesis is complete, the underlying Agent will commit the produced code to the output codecommit repository and notify the users by E-mail (Note: The website E-mail field is non functional at this time. Please see the 'Edit configuration files' section for adding users to E-mail list for receiving output notifications)
 
 ## Next Steps
+1. Model Selection: The model used for code generation can be selected from the list of supported models by the API provider. For Perplexity, the information can be found here . For Architecture diagram analysis, review the list of available foundation models with multimodal capabilities here to experiment with other models. To adjust the model for code generation, change the  model name in the model_name.yaml 
+2. Email notifications to end users: By default, this solution deploys an SNS topic that is intended for administrators to add their emails to. They will automatically be subscribed to the topic upon solution deployment and will receive a notification every time the service is used, along with a link to download the code output from S3. In order to enable webpage email input, SES can be integrated into the solution by having the Processing Lambda function send its output notifications to SES in addition to SNS. The solution is already configured to pass along a user’s email in the event payload to the Processing Lambda. Proper IAM permissions must be added to the function and SES configuration must be completed in the account separately. 
 
 ## Cleanup
+Delete all 3 A2C Cloudformation stacks using the Cloudformation console or CDK destroy commands. All three S3 buckets deployed in this solution will automatically be emptied and deleted upon stack removal.
 
 ## FAQ, known issues, additional considerations, and limitations
 
 ### FAQ
-1. How can I optimize the Email Notifications? (Benjamin Pawlowski)
-2. What other best practices can the user follow while using this solution  to maximise the quality of the output produced?
+1. What other best practices can the user follow while using this solution  to maximise the quality of the output produced?
 
 a. Pay attention to the image clarity and the conceptual clarity of the architecture being depicted. Are all resources described clearly. Check whether the different functional modules  /Account boundaries if any represented clearly. consider adding short phrases as guiding text if parts of the drawing are particularly complex. 
 
 b. For reviewing and optimizing the generated CDK stacks, consider using the Amazon Q Developer extension on your IDE. Use the inline chat feature and ask Q to review the correctness and further optimize the generated stack for any additional best practices.  The authors highly recommend the combined use of Architec2Code AI and Amazon Q developer for rapid implementation of AWS architectures and a truly Next Generation Developer Experience. 
 
 
-1. How can we adapt this solution so that the generated code is natively compatible with the user’s/organization’s development practices/specifications ?
+2. How can we adapt this solution so that the generated code is natively compatible with the user’s/organization’s development practices/specifications ?
 
 
 In order to customize the implementation already during the code generation process, the module_prompts.yaml needs to be edited to list the requirements. Examples are shown how naming conventions can be specified for s3 buckets , attribute preferences for Lambda consructs. 
 
-1. How can  the user alter the model used for the code generation process? 
+3. How can  the user alter the model used for the code generation process? 
 
 As described above in the next steps section
 
-1. What programming languages are currently supported by the solution?
+4. What programming languages are currently supported by the solution?
 
 The solution supports and has been tested for CDK Stack generation in Python and in Typescript. 
 
