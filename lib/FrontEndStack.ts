@@ -56,13 +56,12 @@ export class FrontEndStack extends cdk.Stack {
             `${props.diagramStorageBucket.bucketArn}/*`
           ],
         }),
+        new iam.PolicyStatement({
+            actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+            resources: [`arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-5-sonnet-*`],
+        }),
       ],
     });
-
-    // Add AmazonBedrockFullAccess managed policy to the Lambda function
-    this.responderLambda.role?.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonBedrockFullAccess')
-    );
 
     // User data script for EC2 configuration
     const userData = ec2.UserData.forLinux();

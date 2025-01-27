@@ -5,6 +5,7 @@ import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
 interface Props extends cdk.StackProps {
@@ -19,6 +20,13 @@ export class ProcessingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
+    // Import secret API key
+    const apiKeySecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      'ApiKeySecret',
+      'API_KEY'
+    );
+
     const processingLambda = new lambda.DockerImageFunction(this, 'codeGenerator', {
       functionName: `${props.applicationQualifier}-code-generator`,
       code: lambda.DockerImageCode.fromImageAsset('src/lambda-functions/code-generator'),
@@ -28,7 +36,7 @@ export class ProcessingStack extends cdk.Stack {
         RESULTS_BUCKET_NAME: props.codeOutputBucket.bucketName,
         REGION: this.region,
         A2CAI_PROMPTS: 'a2cai_prompts.yaml',
-        API_KEY: 'api_key.yaml',
+        API_KEY: apiKeySecret.secretArn,
         STACK_GENERATION_PROMPTS: 'stack_gen_prompts.yaml',
       },
       initialPolicy: [
@@ -48,14 +56,16 @@ export class ProcessingStack extends cdk.Stack {
             props.codeOutputBucket.bucketArn,
             props.codeOutputBucket.bucketArn.concat('/*'),
           ],
-        })
+        }),
+        new iam.PolicyStatement({
+          actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+          resources: [`arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-5-sonnet-*`],
+        }),
       ],
     });
 
-    // Add AmazonBedrockFullAccess managed policy to the Lambda function
-    processingLambda.role?.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonBedrockFullAccess')
-    );
+    // Grant read permission to Lambda
+    apiKeySecret.grantRead(processingLambda);
 
     const lambdaProcessingTask = new tasks.LambdaInvoke(this, 'Processing', {
       lambdaFunction: processingLambda,
