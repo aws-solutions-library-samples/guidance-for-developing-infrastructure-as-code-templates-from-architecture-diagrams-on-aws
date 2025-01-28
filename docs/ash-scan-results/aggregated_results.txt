@@ -1,0 +1,922 @@
+#############################################
+Start of  /out/work/cdk_report_result.txt
+#############################################
+
+starting to investigate ...
+found 0 files to scan.  Skipping scans.
+#############################################
+End of  /out/work/cdk_report_result.txt
+#############################################
+
+
+#############################################
+Start of  /out/work/git_report_result.txt
+#############################################
+>>>>>> begin tree result >>>>>>
+Git repository detected. Ensure your .gitignore configuration excludes all the files that you intend to ignore.
+/tmp/ash-run-scan.X6bm
+├── [ 375]  .gitignore
+├── [ 308]  CODE_OF_CONDUCT.md
+├── [3.1K]  CONTRIBUTING.md
+├── [ 946]  LICENSE
+├── [9.4K]  README.md
+├── [581K]  architecture diagram samples
+│   ├── [ 14K]  Level1
+│   │   └── [ 10K]  run-parallel-reads-of-s3-objects-by-using-python-in-an-aws-lambda-function.png
+│   ├── [235K]  Level2
+│   │   ├── [121K]  datalake-storage-s3-layers-creation.png
+│   │   ├── [ 24K]  deliver-dynamodb-records-to-amazon-s3-using-kinesis-data-streams-and-amazon-data-firehose-with-aws-cdk.png
+│   │   ├── [ 43K]  verify-that-new-amazon-redshift-clusters-have-required-ssl-endpoints.png
+│   │   └── [ 43K]  verify-that-new-amazon-redshift-clusters-launch-in-a-vpc.png
+│   └── [328K]  Level3
+│       ├── [124K]  deploy-and-manage-a-serverless-data-lake-on-the-aws-cloud-by-using-infrastructure-as-code.png
+│       └── [200K]  designing-a-high-volume-streaming-data-ingestion-platform-natively-on-aws.png
+├── [5.3K]  bin
+│   └── [1.3K]  datahackathon.ts
+├── [3.5K]  cdk.json
+├── [5.9K]  config
+│   ├── [ 485]  AppConfig.ts
+│   ├── [ 307]  Types.ts
+│   ├── [ 376]  Utils.ts
+│   └── [ 828]  VpcConfig.ts
+├── [564K]  docs
+│   └── [560K]  a2c-architecture.png
+├── [ 192]  export_vars.sh
+├── [ 157]  jest.config.js
+├── [ 14K]  lib
+│   ├── [4.6K]  FrontEndStack.ts
+│   ├── [3.7K]  ProcessingStack.ts
+│   └── [1.9K]  StorageStack.ts
+├── [327K]  package-lock.json
+├── [2.4K]  package.json
+├── [132K]  src
+│   ├── [ 60K]  ec2
+│   │   ├── [ 198]  .eslintrc.json
+│   │   ├── [ 202]  Dockerfile
+│   │   ├── [ 11K]  app.py
+│   │   ├── [ 45K]  images
+│   │   │   └── [ 41K]  sidebar_logo.png
+│   │   └── [  33]  requirements.txt
+│   ├── [ 67K]  lambda-functions
+│   │   ├── [ 50K]  code-generator
+│   │   │   ├── [ 820]  Dockerfile
+│   │   │   ├── [2.6K]  a2cai_code_generator_main.py
+│   │   │   ├── [8.4K]  a2cai_prompts.yaml
+│   │   │   ├── [ 15K]  a2cai_v2.py
+│   │   │   ├── [  64]  api_key.yaml
+│   │   │   ├── [6.1K]  code_generator_utils_v2.py
+│   │   │   ├── [  97]  requirements.txt
+│   │   │   ├── [5.2K]  stack_gen_prompts.yaml
+│   │   │   └── [8.0K]  utils2_v2.py
+│   │   └── [ 13K]  streamlit-responder
+│   │       ├── [ 615]  Dockerfile
+│   │       ├── [  31]  requirements.txt
+│   │       ├── [1.2K]  streamlit_responder_main.py
+│   │       └── [7.4K]  streamlit_responder_utils.py
+│   └── [   0]  model_name.yaml
+├── [4.6K]  test
+│   └── [ 603]  datahackathon.test.ts
+└── [ 763]  tsconfig.json
+
+ 1.6M used in 15 directories, 47 files
+<<<<<< end tree -x -h -a --du -I .git result <<<<<<
+OK
+git config --local --get-regexp "^secrets\..*$" output:
+secrets.providers git secrets --aws-provider
+secrets.patterns (A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}
+secrets.patterns ("|')?(AWS|aws|Aws)?_?(SECRET|secret|Secret)?_?(ACCESS|access|Access)?_?(KEY|key|Key)("|')?\s*(:|=>|=)\s*("|')?[A-Za-z0-9/\+=]{40}("|')?
+secrets.patterns ("|')?(AWS|aws|Aws)?_?(ACCOUNT|account|Account)_?(ID|id|Id)?("|')?\s*(:|=>|=)\s*("|')?[0-9]{4}\-?[0-9]{4}\-?[0-9]{4}("|')?
+secrets.allowed AKIAIOSFODNN7EXAMPLE
+secrets.allowed wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+>>>>>> begin git secrets --scan result >>>>>>
+<<<<<< end git secrets --scan result <<<<<<
+#############################################
+End of  /out/work/git_report_result.txt
+#############################################
+
+
+#############################################
+Start of  /out/work/grype_report_result.txt
+#############################################
+
+>>>>>> Begin Grype output for /tmp/ash-run-scan.X6bm >>>>>>
+
+[0000]  WARN no explicit name and version provided for directory source, deriving artifact ID from the given path (which is not ideal)
+NAME         INSTALLED  FIXED-IN  TYPE  VULNERABILITY        SEVERITY 
+aws-cdk-lib  2.147.0              npm   GHSA-v4mq-x674-ff73  Low
+
+<<<<<< End Grype output for /tmp/ash-run-scan.X6bm <<<<<<
+
+
+>>>>>> Begin Grype output for /out/work >>>>>>
+
+[0000]  WARN no explicit name and version provided for directory source, deriving artifact ID from the given path (which is not ideal)
+No vulnerabilities found
+
+<<<<<< End Grype output for /out/work <<<<<<
+
+
+>>>>>> Begin Syft output for /tmp/ash-run-scan.X6bm >>>>>>
+
+[0000]  WARN no explicit name and version provided for directory source, deriving artifact ID from the given path (which is not ideal)
+NAME                                             VERSION         TYPE   
+@aws-cdk/asset-awscli-v1                         2.2.202         npm     
+@aws-cdk/asset-kubectl-v20                       2.1.2           npm     
+@aws-cdk/asset-node-proxy-agent-v6               2.0.3           npm     
+@aws-cdk/aws-apigatewayv2-alpha                  2.65.0-alpha.0  npm     
+@aws-cdk/aws-redshift-alpha                      2.65.0-alpha.0  npm     
+@aws-cdk/aws-synthetics-alpha                    2.65.0-alpha.0  npm     
+@balena/dockerignore                             1.0.2           npm     
+@cloudcomponents/cdk-pull-request-approval-rule  2.1.0           npm     
+@cloudcomponents/cdk-pull-request-check          2.1.0           npm     
+@types/uuid                                      9.0.3           npm     
+@typescript-eslint/types                         5.62.0          npm     
+@typescript-eslint/visitor-keys                  5.62.0          npm     
+a2cai                                            0.1.0           npm     
+ajv                                              8.16.0          npm     
+ansi-regex                                       5.0.1           npm     
+ansi-styles                                      4.3.0           npm     
+astral-regex                                     2.0.0           npm     
+aws-cdk-lib                                      2.147.0         npm     
+balanced-match                                   1.0.2           npm     
+brace-expansion                                  1.1.11          npm     
+buffer-from                                      1.1.2           npm     
+case                                             1.6.3           npm     
+cdk-monitoring-constructs                        5.10.1          npm     
+cdk-nag                                          2.27.129        npm     
+color-convert                                    2.0.1           npm     
+color-name                                       1.1.4           npm     
+concat-map                                       0.0.1           npm     
+constructs                                       10.2.70         npm     
+emoji-regex                                      8.0.0           npm     
+eslint-visitor-keys                              3.4.3           npm     
+fast-deep-equal                                  3.1.3           npm     
+fs-extra                                         11.2.0          npm     
+graceful-fs                                      4.2.11          npm     
+ignore                                           5.3.1           npm     
+is-fullwidth-code-point                          3.0.0           npm     
+json-schema-traverse                             1.0.0           npm     
+jsonfile                                         6.1.0           npm     
+jsonschema                                       1.4.1           npm     
+lodash.truncate                                  4.4.2           npm     
+mime-db                                          1.52.0          npm     
+mime-types                                       2.1.35          npm     
+minimatch                                        3.1.2           npm     
+punycode                                         2.3.1           npm     
+require-from-string                              2.0.2           npm     
+semver                                           7.6.2           npm     
+slice-ansi                                       4.0.0           npm     
+source-map                                       0.6.1           npm     
+source-map-support                               0.5.21          npm     
+string-width                                     4.2.3           npm     
+strip-ansi                                       6.0.1           npm     
+table                                            6.8.2           npm     
+universalify                                     2.0.1           npm     
+uri-js                                           4.4.1           npm     
+uuid                                             9.0.1           npm     
+yaml                                             1.10.2          npm
+
+<<<<<< End Syft output for /tmp/ash-run-scan.X6bm <<<<<<
+
+
+>>>>>> Begin Syft output for /out/work >>>>>>
+
+[0000]  WARN no explicit name and version provided for directory source, deriving artifact ID from the given path (which is not ideal)
+No packages discovered
+
+<<<<<< End Syft output for /out/work <<<<<<
+
+
+>>>>>> Begin Semgrep output for /tmp/ash-run-scan.X6bm >>>>>>
+
+METRICS: Using configs from the Registry (like --config=p/ci) reports pseudonymous rule metrics to semgrep.dev.
+To disable Registry rule metrics, use "--metrics=off".
+Using configs only from local files (like --config=xyz.yml) does not enable metrics.
+
+More information: https://semgrep.dev/docs/metrics
+
+               
+               
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 47 files tracked by git with 1058 Code rules:
+                                                                                                                        
+  Language      Rules   Files          Origin      Rules                                                                
+ ─────────────────────────────        ───────────────────                                                               
+  <multilang>      48      46          Community    1058                                                                
+  ts              167       8                                                                                           
+  python          242       7                                                                                           
+  json              4       5                                                                                           
+  yaml             31       4                                                                                           
+  dockerfile        5       3                                                                                           
+  js              157       1                                                                                           
+  bash              4       1                                                                                           
+                                                                                                                        
+                
+                
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+Some files were skipped or only partially analyzed.
+  Scan was limited to files tracked by git.
+  Scan skipped: 1 files matching .semgrepignore patterns
+  For a full list of skipped files, run semgrep with the --verbose flag.
+
+Ran 496 rules on 46 files: 3 findings.
+                   
+                   
+┌─────────────────┐
+│ 3 Code Findings │
+└─────────────────┘
+                                             
+    /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile
+   ❯❯❱ dockerfile.security.missing-user-entrypoint.missing-user-entrypoint
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/k281                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root ENTRYPOINT [ "streamlit", "run", "app.py", "--server.port=80", "--
+              server.address=0.0.0.0" ]                                                                  
+            7┆ ENTRYPOINT [ "streamlit", "run", "app.py", "--server.port=80", "--server.address=0.0.0.0" ]
+                                         
+    /tmp/ash-run-scan.X6bm/src/ec2/app.py
+     ❱ python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http
+          Detected a request using 'http://'. This request will be unencrypted, and attackers could listen
+          into traffic on the network and be able to obtain sensitive information. Use 'https://' instead.
+          Details: https://sg.run/W8J4                                                                    
+                                                                                                          
+           24┆ "http://169.254.169.254/latest/api/token",
+                                                                         
+    /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile
+   ❯❯❱ dockerfile.security.missing-user.missing-user
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/Gbvn                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root CMD [ "a2cai_code_generator_main.lambda_handler" ]
+           25┆ CMD [ "a2cai_code_generator_main.lambda_handler" ]
+
+
+<<<<<< End Semgrep output for /tmp/ash-run-scan.X6bm <<<<<<
+
+
+>>>>>> Begin Semgrep output for /out/work >>>>>>
+
+               
+               
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 6 files tracked by git with 1058 Code rules:
+  Scanning 6 files with 48 <multilang> rules.
+                
+                
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+
+(need more rules? `semgrep login` for additional free Semgrep Registry rules)
+
+Ran 48 rules on 6 files: 0 findings.
+If Semgrep missed a finding, please send us feedback to let us know!
+See https://semgrep.dev/docs/reporting-false-negatives/
+
+<<<<<< End Semgrep output for /out/work <<<<<<
+
+#############################################
+End of  /out/work/grype_report_result.txt
+#############################################
+
+
+#############################################
+Start of  /out/work/js_report_result.txt
+#############################################
+
+>>>>>> Begin npm audit output for /tmp/ash-run-scan.X6bm >>>>>>
+
+# npm audit report
+
+aws-cdk-lib  <=2.176.0
+AWS Cloud Development Kit (AWS CDK) IAM OIDC custom resource allows connection to unauthorized OIDC provider - https://github.com/advisories/GHSA-v4mq-x674-ff73
+fix available via `npm audit fix --force`
+Will install aws-cdk-lib@2.177.0, which is outside the stated dependency range
+node_modules/aws-cdk-lib
+
+1 low severity vulnerability
+
+To address all issues, run:
+  npm audit fix --force
+npm notice
+npm notice New major version of npm available! 10.9.2 -> 11.0.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.0.0
+npm notice To update run: npm install -g npm@11.0.0
+npm notice
+
+<<<<<< End npm audit output for /tmp/ash-run-scan.X6bm <<<<<<
+
+#############################################
+End of  /out/work/js_report_result.txt
+#############################################
+
+
+#############################################
+Start of  /out/work/py_report_result.txt
+#############################################
+>>>>>> begin identifyipynb output for Jupyter notebook conversion >>>>>>
+Looking for Jupyter notebook files
+
+
+<<<<<< end identifyipynb output for Jupyter notebook conversion <<<<<<
+>>>>>> begin bandit result for /tmp/ash-run-scan.X6bm >>>>>>
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: None
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[main]	INFO	running on Python 3.10.16
+Run started:2025-01-28 01:02:53.927621
+
+Test results:
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.2/plugins/b108_hardcoded_tmp_directory.html
+   Location: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/a2cai_code_generator_main.py:28:18
+27	    # Check whether the required scripts and config files are present in the Lambda environment
+28	    storage_dir = '/tmp'
+29	    local_dir='/var/task'
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.2/plugins/b108_hardcoded_tmp_directory.html
+   Location: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/utils2_v2.py:158:17
+157	    """
+158	    workingdir = '/tmp'
+159	    zip_filename = source_dir + '.zip'
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.2/plugins/b108_hardcoded_tmp_directory.html
+   Location: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/utils2_v2.py:160:28
+159	    zip_filename = source_dir + '.zip'
+160	    dest_zip = os.path.join('/tmp', zip_filename)
+161	   
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.2/plugins/b108_hardcoded_tmp_directory.html
+   Location: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/streamlit_responder_main.py:28:16
+27	    # set local_dir
+28	    local_dir = '/tmp'
+29	    
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.2/plugins/b108_hardcoded_tmp_directory.html
+   Location: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/streamlit_responder_utils.py:44:25
+43	        
+44	        print(os.listdir('/tmp'))
+45	        print(local_file_path)
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 936
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 0
+		Medium: 5
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 5
+		High: 0
+Files skipped (0):
+
+<<<<<< end bandit result for /tmp/ash-run-scan.X6bm <<<<<<
+>>>>>> begin bandit result for /out/work >>>>>>
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: None
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[main]	INFO	running on Python 3.10.16
+Run started:2025-01-28 01:02:54.062531
+
+Test results:
+	No issues identified.
+
+Code scanned:
+	Total lines of code: 0
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+Files skipped (0):
+
+<<<<<< end bandit result for /out/work <<<<<<
+#############################################
+End of  /out/work/py_report_result.txt
+#############################################
+
+
+#############################################
+Start of  /out/work/yaml_report_result.txt
+#############################################
+
+>>>>>> Begin yaml scan output for /tmp/ash-run-scan.X6bm >>>>>>
+
+starting to investigate ...
+found 3 files to scan.  Starting checkov scans ...
+>>>>>> begin checkov result for Dockerfile >>>>>>
+
+       _               _
+   ___| |__   ___  ___| | _______   __
+  / __| '_ \ / _ \/ __| |/ / _ \ \ / /
+ | (__| | | |  __/ (__|   < (_) \ V /
+  \___|_| |_|\___|\___|_|\_\___/ \_/
+
+By Prisma Cloud | version: 3.2.357 
+
+dockerfile scan results:
+
+Passed checks: 23, Failed checks: 2, Skipped checks: 0
+
+Check: CKV_DOCKER_11: "Ensure From Alias are unique for multistage builds."
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:1-7
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-from-alias-is-unique-for-multistage-builds
+Check: CKV_DOCKER_7: "Ensure the base image uses a non latest version tag"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.FROM
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:1-1
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-the-base-image-uses-a-non-latest-version-tag
+Check: CKV_DOCKER_10: "Ensure that WORKDIR values are absolute paths"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:1-7
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-workdir-values-are-absolute-paths
+Check: CKV_DOCKER_9: "Ensure that APT isn't used"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:1-7
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apt-is-not-used
+Check: CKV_DOCKER_5: "Ensure update instructions are not use alone in the Dockerfile"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:1-7
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-update-instructions-are-not-used-alone-in-the-dockerfile
+Check: CKV_DOCKER_1: "Ensure port 22 is not exposed"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:1-7
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-port-22-is-not-exposed
+Check: CKV2_DOCKER_14: "Ensure that certificate validation isn't disabled for git by setting the environment variable 'GIT_SSL_NO_VERIFY' to any value"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-git-ssl
+Check: CKV2_DOCKER_17: "Ensure that 'chpasswd' is not used to set or remove passwords"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/bc-docker-2-17
+Check: CKV2_DOCKER_12: "Ensure that certificate validation isn't disabled for npm via the 'NPM_CONFIG_STRICT_SSL' environmnet variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-npm-strict-ssl
+Check: CKV2_DOCKER_16: "Ensure that certificate validation isn't disabled with pip via the 'PIP_TRUSTED_HOST' environment variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-pip-trusted-host
+Check: CKV2_DOCKER_13: "Ensure that certificate validation isn't disabled for npm or yarn by setting the option strict-ssl to false"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-npm-strict-ssl2
+Check: CKV2_DOCKER_4: "Ensure that certificate validation isn't disabled with the pip '--trusted-host' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-pip-secure
+Check: CKV2_DOCKER_9: "Ensure that packages with untrusted or missing GPG signatures are not used by dnf, tdnf, or yum via the '--nogpgcheck' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-yum-signed
+Check: CKV2_DOCKER_7: "Ensure that packages with untrusted or missing signatures are not used by apk via the '--allow-untrusted' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apk-trusted
+Check: CKV2_DOCKER_10: "Ensure that packages with untrusted or missing signatures are not used by rpm via the '--nodigest', '--nosignature', '--noverify', or '--nofiledigest' options"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-rpm-signed
+Check: CKV2_DOCKER_8: "Ensure that packages with untrusted or missing signatures are not used by apt-get via the '--allow-unauthenticated' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apt-authenticated
+Check: CKV2_DOCKER_11: "Ensure that the '--force-yes' option is not used, as it disables signature validation and allows packages to be downgraded which can leave the system in a broken or inconsistent state"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apt-force
+Check: CKV2_DOCKER_6: "Ensure that certificate validation isn't disabled with the NODE_TLS_REJECT_UNAUTHORIZED environmnet variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-node-tls-secure
+Check: CKV2_DOCKER_1: "Ensure that sudo isn't used"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-dont-use-sudo
+Check: CKV2_DOCKER_5: "Ensure that certificate validation isn't disabled with the PYTHONHTTPSVERIFY environmnet variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-PYTHONHTTPSVERIFY-secure
+Check: CKV2_DOCKER_3: "Ensure that certificate validation isn't disabled with wget"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-wget-secure
+Check: CKV2_DOCKER_15: "Ensure that the yum and dnf package managers are not configured to disable SSL certificate validation via the 'sslverify' configuration option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-yum-ssl
+Check: CKV2_DOCKER_2: "Ensure that certificate validation isn't disabled with curl"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:5-5
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-curl-secure
+Check: CKV_DOCKER_2: "Ensure that HEALTHCHECK instructions have been added to container images"
+	FAILED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:1-7
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-that-healthcheck-instructions-have-been-added-to-container-images
+
+		1 | FROM python:3.11
+		2 | EXPOSE 80
+		3 | WORKDIR /app
+		4 | COPY requirements.txt ./
+		5 | RUN pip install -r requirements.txt
+		6 | COPY . ./
+		7 | ENTRYPOINT [ "streamlit", "run", "app.py", "--server.port=80", "--server.address=0.0.0.0" ]
+Check: CKV_DOCKER_3: "Ensure that a user for the container has been created"
+	FAILED for resource: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/ec2/Dockerfile:1-7
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-that-a-user-for-the-container-has-been-created
+
+		1 | FROM python:3.11
+		2 | EXPOSE 80
+		3 | WORKDIR /app
+		4 | COPY requirements.txt ./
+		5 | RUN pip install -r requirements.txt
+		6 | COPY . ./
+		7 | ENTRYPOINT [ "streamlit", "run", "app.py", "--server.port=80", "--server.address=0.0.0.0" ]
+
+<<<<<< end checkov result for Dockerfile <<<<<<
+>>>>>> begin checkov result for Dockerfile >>>>>>
+
+       _               _
+   ___| |__   ___  ___| | _______   __
+  / __| '_ \ / _ \/ __| |/ / _ \ \ / /
+ | (__| | | |  __/ (__|   < (_) \ V /
+  \___|_| |_|\___|\___|_|\_\___/ \_/
+
+By Prisma Cloud | version: 3.2.357 
+
+dockerfile scan results:
+
+Passed checks: 22, Failed checks: 2, Skipped checks: 0
+
+Check: CKV_DOCKER_11: "Ensure From Alias are unique for multistage builds."
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:1-25
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-from-alias-is-unique-for-multistage-builds
+Check: CKV_DOCKER_7: "Ensure the base image uses a non latest version tag"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.FROM
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:2-2
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-the-base-image-uses-a-non-latest-version-tag
+Check: CKV_DOCKER_10: "Ensure that WORKDIR values are absolute paths"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:1-25
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-workdir-values-are-absolute-paths
+Check: CKV_DOCKER_9: "Ensure that APT isn't used"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:1-25
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apt-is-not-used
+Check: CKV_DOCKER_5: "Ensure update instructions are not use alone in the Dockerfile"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:1-25
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-update-instructions-are-not-used-alone-in-the-dockerfile
+Check: CKV2_DOCKER_14: "Ensure that certificate validation isn't disabled for git by setting the environment variable 'GIT_SSL_NO_VERIFY' to any value"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-git-ssl
+Check: CKV2_DOCKER_4: "Ensure that certificate validation isn't disabled with the pip '--trusted-host' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-pip-secure
+Check: CKV2_DOCKER_17: "Ensure that 'chpasswd' is not used to set or remove passwords"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/bc-docker-2-17
+Check: CKV2_DOCKER_8: "Ensure that packages with untrusted or missing signatures are not used by apt-get via the '--allow-unauthenticated' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apt-authenticated
+Check: CKV2_DOCKER_3: "Ensure that certificate validation isn't disabled with wget"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-wget-secure
+Check: CKV2_DOCKER_7: "Ensure that packages with untrusted or missing signatures are not used by apk via the '--allow-untrusted' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apk-trusted
+Check: CKV2_DOCKER_9: "Ensure that packages with untrusted or missing GPG signatures are not used by dnf, tdnf, or yum via the '--nogpgcheck' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-yum-signed
+Check: CKV2_DOCKER_10: "Ensure that packages with untrusted or missing signatures are not used by rpm via the '--nodigest', '--nosignature', '--noverify', or '--nofiledigest' options"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-rpm-signed
+Check: CKV2_DOCKER_12: "Ensure that certificate validation isn't disabled for npm via the 'NPM_CONFIG_STRICT_SSL' environmnet variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-npm-strict-ssl
+Check: CKV2_DOCKER_16: "Ensure that certificate validation isn't disabled with pip via the 'PIP_TRUSTED_HOST' environment variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-pip-trusted-host
+Check: CKV2_DOCKER_6: "Ensure that certificate validation isn't disabled with the NODE_TLS_REJECT_UNAUTHORIZED environmnet variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-node-tls-secure
+Check: CKV2_DOCKER_1: "Ensure that sudo isn't used"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-dont-use-sudo
+Check: CKV2_DOCKER_5: "Ensure that certificate validation isn't disabled with the PYTHONHTTPSVERIFY environmnet variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-PYTHONHTTPSVERIFY-secure
+Check: CKV2_DOCKER_13: "Ensure that certificate validation isn't disabled for npm or yarn by setting the option strict-ssl to false"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-npm-strict-ssl2
+Check: CKV2_DOCKER_15: "Ensure that the yum and dnf package managers are not configured to disable SSL certificate validation via the 'sslverify' configuration option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-yum-ssl
+Check: CKV2_DOCKER_11: "Ensure that the '--force-yes' option is not used, as it disables signature validation and allows packages to be downgraded which can leave the system in a broken or inconsistent state"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apt-force
+Check: CKV2_DOCKER_2: "Ensure that certificate validation isn't disabled with curl"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-curl-secure
+Check: CKV_DOCKER_2: "Ensure that HEALTHCHECK instructions have been added to container images"
+	FAILED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:1-25
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-that-healthcheck-instructions-have-been-added-to-container-images
+
+		1  | # Use the official AWS Lambda Python 3.11 image as the base
+		2  | FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.11
+		3  | 
+		4  | # Set the working directory in the container
+		5  | WORKDIR /var/task
+		6  | 
+		7  | # Copy requirements.txt
+		8  | 
+		9  | COPY requirements.txt  ${LAMBDA_TASK_ROOT} 
+		10 | 
+		11 | # Install dependencies
+		12 | RUN pip3 install -r requirements.txt
+		13 | 
+		14 | # Copy the rest of your application code
+		15 | COPY a2cai_code_generator_main.py ${LAMBDA_TASK_ROOT} 
+		16 | COPY code_generator_utils_v2.py ${LAMBDA_TASK_ROOT} 
+		17 | COPY utils2_v2.py ${LAMBDA_TASK_ROOT}
+		18 | COPY a2cai_v2.py ${LAMBDA_TASK_ROOT}
+		19 | COPY stack_gen_prompts.yaml ${LAMBDA_TASK_ROOT}
+		20 | COPY a2cai_prompts.yaml ${LAMBDA_TASK_ROOT}
+		21 | COPY api_key.yaml ${LAMBDA_TASK_ROOT}
+		22 | 
+		23 | # Set the CMD to your handler function
+		24 | # Replace "app.handler" with your actual handler function
+		25 | CMD [ "a2cai_code_generator_main.lambda_handler" ]
+Check: CKV_DOCKER_3: "Ensure that a user for the container has been created"
+	FAILED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/code-generator/Dockerfile:1-25
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-that-a-user-for-the-container-has-been-created
+
+		1  | # Use the official AWS Lambda Python 3.11 image as the base
+		2  | FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.11
+		3  | 
+		4  | # Set the working directory in the container
+		5  | WORKDIR /var/task
+		6  | 
+		7  | # Copy requirements.txt
+		8  | 
+		9  | COPY requirements.txt  ${LAMBDA_TASK_ROOT} 
+		10 | 
+		11 | # Install dependencies
+		12 | RUN pip3 install -r requirements.txt
+		13 | 
+		14 | # Copy the rest of your application code
+		15 | COPY a2cai_code_generator_main.py ${LAMBDA_TASK_ROOT} 
+		16 | COPY code_generator_utils_v2.py ${LAMBDA_TASK_ROOT} 
+		17 | COPY utils2_v2.py ${LAMBDA_TASK_ROOT}
+		18 | COPY a2cai_v2.py ${LAMBDA_TASK_ROOT}
+		19 | COPY stack_gen_prompts.yaml ${LAMBDA_TASK_ROOT}
+		20 | COPY a2cai_prompts.yaml ${LAMBDA_TASK_ROOT}
+		21 | COPY api_key.yaml ${LAMBDA_TASK_ROOT}
+		22 | 
+		23 | # Set the CMD to your handler function
+		24 | # Replace "app.handler" with your actual handler function
+		25 | CMD [ "a2cai_code_generator_main.lambda_handler" ]
+
+<<<<<< end checkov result for Dockerfile <<<<<<
+>>>>>> begin checkov result for Dockerfile >>>>>>
+
+       _               _
+   ___| |__   ___  ___| | _______   __
+  / __| '_ \ / _ \/ __| |/ / _ \ \ / /
+ | (__| | | |  __/ (__|   < (_) \ V /
+  \___|_| |_|\___|\___|_|\_\___/ \_/
+
+By Prisma Cloud | version: 3.2.357 
+
+dockerfile scan results:
+
+Passed checks: 22, Failed checks: 2, Skipped checks: 0
+
+Check: CKV_DOCKER_11: "Ensure From Alias are unique for multistage builds."
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:1-20
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-from-alias-is-unique-for-multistage-builds
+Check: CKV_DOCKER_7: "Ensure the base image uses a non latest version tag"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.FROM
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:2-2
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-the-base-image-uses-a-non-latest-version-tag
+Check: CKV_DOCKER_10: "Ensure that WORKDIR values are absolute paths"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:1-20
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-workdir-values-are-absolute-paths
+Check: CKV_DOCKER_9: "Ensure that APT isn't used"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:1-20
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apt-is-not-used
+Check: CKV_DOCKER_5: "Ensure update instructions are not use alone in the Dockerfile"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:1-20
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-update-instructions-are-not-used-alone-in-the-dockerfile
+Check: CKV2_DOCKER_14: "Ensure that certificate validation isn't disabled for git by setting the environment variable 'GIT_SSL_NO_VERIFY' to any value"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-git-ssl
+Check: CKV2_DOCKER_17: "Ensure that 'chpasswd' is not used to set or remove passwords"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/bc-docker-2-17
+Check: CKV2_DOCKER_12: "Ensure that certificate validation isn't disabled for npm via the 'NPM_CONFIG_STRICT_SSL' environmnet variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-npm-strict-ssl
+Check: CKV2_DOCKER_16: "Ensure that certificate validation isn't disabled with pip via the 'PIP_TRUSTED_HOST' environment variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-pip-trusted-host
+Check: CKV2_DOCKER_6: "Ensure that certificate validation isn't disabled with the NODE_TLS_REJECT_UNAUTHORIZED environmnet variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-node-tls-secure
+Check: CKV2_DOCKER_1: "Ensure that sudo isn't used"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-dont-use-sudo
+Check: CKV2_DOCKER_5: "Ensure that certificate validation isn't disabled with the PYTHONHTTPSVERIFY environmnet variable"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-PYTHONHTTPSVERIFY-secure
+Check: CKV2_DOCKER_8: "Ensure that packages with untrusted or missing signatures are not used by apt-get via the '--allow-unauthenticated' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apt-authenticated
+Check: CKV2_DOCKER_11: "Ensure that the '--force-yes' option is not used, as it disables signature validation and allows packages to be downgraded which can leave the system in a broken or inconsistent state"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apt-force
+Check: CKV2_DOCKER_13: "Ensure that certificate validation isn't disabled for npm or yarn by setting the option strict-ssl to false"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-npm-strict-ssl2
+Check: CKV2_DOCKER_3: "Ensure that certificate validation isn't disabled with wget"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-wget-secure
+Check: CKV2_DOCKER_4: "Ensure that certificate validation isn't disabled with the pip '--trusted-host' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-pip-secure
+Check: CKV2_DOCKER_9: "Ensure that packages with untrusted or missing GPG signatures are not used by dnf, tdnf, or yum via the '--nogpgcheck' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-yum-signed
+Check: CKV2_DOCKER_7: "Ensure that packages with untrusted or missing signatures are not used by apk via the '--allow-untrusted' option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-apk-trusted
+Check: CKV2_DOCKER_15: "Ensure that the yum and dnf package managers are not configured to disable SSL certificate validation via the 'sslverify' configuration option"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-yum-ssl
+Check: CKV2_DOCKER_10: "Ensure that packages with untrusted or missing signatures are not used by rpm via the '--nodigest', '--nosignature', '--noverify', or '--nofiledigest' options"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-rpm-signed
+Check: CKV2_DOCKER_2: "Ensure that certificate validation isn't disabled with curl"
+	PASSED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.RUN
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:12-12
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-docker-curl-secure
+Check: CKV_DOCKER_2: "Ensure that HEALTHCHECK instructions have been added to container images"
+	FAILED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:1-20
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-that-healthcheck-instructions-have-been-added-to-container-images
+
+		1  | # Use the official AWS Lambda Python 3.11 image as the base
+		2  | FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.11
+		3  | 
+		4  | # Set the working directory in the container
+		5  | WORKDIR /var/task
+		6  | 
+		7  | # Copy requirements.txt
+		8  | 
+		9  | COPY requirements.txt  ${LAMBDA_TASK_ROOT} 
+		10 | 
+		11 | # Install dependencies
+		12 | RUN pip3 install -r requirements.txt
+		13 | 
+		14 | # Copy the rest of your application code
+		15 | COPY streamlit_responder_main.py ${LAMBDA_TASK_ROOT} 
+		16 | COPY streamlit_responder_utils.py ${LAMBDA_TASK_ROOT} 
+		17 | 
+		18 | # Set the CMD to your handler function
+		19 | # Replace "app.handler" with your actual handler function
+		20 | CMD [ "streamlit_responder_main.lambda_handler" ]
+Check: CKV_DOCKER_3: "Ensure that a user for the container has been created"
+	FAILED for resource: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile.
+	File: /tmp/ash-run-scan.X6bm/src/lambda-functions/streamlit-responder/Dockerfile:1-20
+	Guide: https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-that-a-user-for-the-container-has-been-created
+
+		1  | # Use the official AWS Lambda Python 3.11 image as the base
+		2  | FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.11
+		3  | 
+		4  | # Set the working directory in the container
+		5  | WORKDIR /var/task
+		6  | 
+		7  | # Copy requirements.txt
+		8  | 
+		9  | COPY requirements.txt  ${LAMBDA_TASK_ROOT} 
+		10 | 
+		11 | # Install dependencies
+		12 | RUN pip3 install -r requirements.txt
+		13 | 
+		14 | # Copy the rest of your application code
+		15 | COPY streamlit_responder_main.py ${LAMBDA_TASK_ROOT} 
+		16 | COPY streamlit_responder_utils.py ${LAMBDA_TASK_ROOT} 
+		17 | 
+		18 | # Set the CMD to your handler function
+		19 | # Replace "app.handler" with your actual handler function
+		20 | CMD [ "streamlit_responder_main.lambda_handler" ]
+
+<<<<<< end checkov result for Dockerfile <<<<<<
+found 0 files to scan.  Skipping cfn_nag scans.
+
+<<<<<< End yaml scan output for /tmp/ash-run-scan.X6bm <<<<<<
+
+
+>>>>>> Begin yaml scan output for /out/work >>>>>>
+
+starting to investigate ...
+found 0 files to scan.  Skipping checkov scans.
+found 0 files to scan.  Skipping cfn_nag scans.
+
+<<<<<< End yaml scan output for /out/work <<<<<<
+
+#############################################
+End of  /out/work/yaml_report_result.txt
+#############################################
+
+
