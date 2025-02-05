@@ -34,6 +34,8 @@ Coming soon
 ### Operating System
 - This Guidance can be deployed using Windows, MacOS, or Linux. 
 - An IDE, AWS CDK and AWS CLI are required.
+- NPM installed
+- Docker
 
 ### Third Party Tools
 Perplexity API Key

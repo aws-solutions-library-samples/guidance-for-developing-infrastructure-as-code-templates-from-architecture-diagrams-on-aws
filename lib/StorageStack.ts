@@ -9,7 +9,6 @@ interface Props extends cdk.StackProps {
 }
 
 export class StorageStack extends cdk.Stack {
-  public readonly storageBucket: s3.Bucket;
   public readonly diagramStorageBucket: s3.Bucket;
   public readonly streamlitServerBucket: s3.Bucket;
   public readonly codeOutputBucket: s3.Bucket;
