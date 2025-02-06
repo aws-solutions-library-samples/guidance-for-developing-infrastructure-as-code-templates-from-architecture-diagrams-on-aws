@@ -20,13 +20,6 @@ export class ProcessingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
-    // Import secret API key
-    const apiKeySecret = secretsmanager.Secret.fromSecretNameV2(
-      this,
-      'ApiKeySecret',
-      'API_KEY'
-    );
-
     const processingLambda = new lambda.DockerImageFunction(this, 'codeGenerator', {
       functionName: `${props.applicationQualifier}-code-generator`,
       code: lambda.DockerImageCode.fromImageAsset('src/lambda-functions/code-generator'),
@@ -61,11 +54,12 @@ export class ProcessingStack extends cdk.Stack {
           actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
           resources: [`arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-5-sonnet-*`],
         }),
+        new iam.PolicyStatement({
+          actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
+          resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:A2C_API_KEY*`],
+        }),
       ],
     });
-
-    // Grant read permission to Lambda
-    apiKeySecret.grantRead(processingLambda);
 
     const lambdaProcessingTask = new tasks.LambdaInvoke(this, 'Processing', {
       lambdaFunction: processingLambda,

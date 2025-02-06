@@ -18,7 +18,7 @@ COPY utils2_v2.py ${LAMBDA_TASK_ROOT}
 COPY a2cai_v2.py ${LAMBDA_TASK_ROOT}
 COPY stack_gen_prompts.yaml ${LAMBDA_TASK_ROOT}
 COPY a2cai_prompts.yaml ${LAMBDA_TASK_ROOT}
-COPY api_key.yaml ${LAMBDA_TASK_ROOT}
+COPY model_name.yaml ${LAMBDA_TASK_ROOT}
 
 # Set the CMD to your handler function
 # Replace "app.handler" with your actual handler function

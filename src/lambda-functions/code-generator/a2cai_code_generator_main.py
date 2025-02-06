@@ -15,7 +15,7 @@ def get_api_key_from_secrets():
     
     try:
         secret_response = client.get_secret_value(
-            SecretId='ApiKeySecret/API_KEY' # Secret name where API key is stored
+            SecretId='A2C_API_KEY' # Secret name where API key is stored
         )
         api_key = secret_response['SecretString']
         return api_key
@@ -51,7 +51,6 @@ async def async_lambda_handler(event, context):
     prompts_config_file = os.environ['A2CAI_PROMPTS']
     model_config_file = os.environ['MODEL_NAME']
     stack_gen_prompts_config_file = os.environ['STACK_GENERATION_PROMPTS']
-    api_key_config_file = os.environ['API_KEY']
     result_bucket_name = os.environ['RESULTS_BUCKET_NAME']
 
     # Load the main prompts configuration from YAML file
@@ -62,9 +61,6 @@ async def async_lambda_handler(event, context):
 
     # Load additional stack generation prompts from separate YAML file
     stack_generation_prompt_dict = load_stack_generation_prompts(os.path.join(stack_gen_prompts_config_file))
-    
-    # Load API key configuration from YAML file
-    api_key_config_dict = load_api_key(os.path.join(local_dir, api_key_config_file))
 
     # Call main processing function with all configured parameters
     # Returns path to generated zip file containing the code

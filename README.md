@@ -77,13 +77,14 @@ Prepare the account for CDK deployment.
 ```bash
 cdk bootstrap --profile $AWS_PROFILE --qualifier ${CDK_QUALIFIER} aws://${AWS_ACCOUNT_ID}/${AWS_REGION}
 ```
-### 6. Deploy
+### 6. Create AWS Secret and Upload API Key
+In the AWS Console, navigate to Secrets Manager create a new secret with the name 'A2C_API_KEY' and the value set to your Perplexity API key.
+
+### 7. Deploy
 Deploy the project using CDK.
 ```bash
 cdk deploy --all --require-approval never
 ```
-### 7. Upload API Key
-In the AWS Console, navigate to Secrets Manager and copy your Perplexity API key to the newly created Secrets Manager secret named 'ApiKeySecret'.
 
 ## Deployment Validation
 Open CloudFormation console and verify the status of the template with the name starting with “A2C”.

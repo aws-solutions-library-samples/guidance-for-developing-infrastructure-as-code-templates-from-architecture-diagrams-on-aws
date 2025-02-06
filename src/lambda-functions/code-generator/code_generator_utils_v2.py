@@ -11,7 +11,6 @@ import pprint
 from pprint import pprint
 import asyncio
 
-#api_key = "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"
 role = "You are an expert in the latest version of AWS CDK and understanding of AWS services"
 
 
