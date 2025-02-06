@@ -309,7 +309,7 @@ def generate_staging_prompt(responses,template: str, stack_names: list, language
     return staging_prompt_dict
     
     
-async def modular_stack_generator_main(module_prompt_dict, code_language, local_dir, stack_dirname, stack_logfiles_dir,stack_generation_prompt_dict):
+async def modular_stack_generator_main(module_prompt_dict, code_language, local_dir, stack_dirname, stack_logfiles_dir,stack_generation_prompt_dict, api_key, model_name):
     
     
     
@@ -317,7 +317,7 @@ async def modular_stack_generator_main(module_prompt_dict, code_language, local_
     # Create concurrent tasks with different prompts for each module 
    
     async with aiohttp.ClientSession() as session:
-        tasks = [code_generation_do_it_all(session,module_name, module_prompt, local_dir, stack_dirname,code_language,stack_logfiles_dir,stack_generation_prompt_dict)for module_name, module_prompt in module_prompt_dict.items()]  
+        tasks = [code_generation_do_it_all(session,module_name, module_prompt, local_dir, stack_dirname,code_language,stack_logfiles_dir,stack_generation_prompt_dict,api_key,model_name)for module_name, module_prompt in module_prompt_dict.items()]  
         responses = await asyncio.gather(*tasks)  # Run tasks concurrently and gather results
     
     
@@ -347,7 +347,7 @@ async def generate_staging_file (staging_prompt_dict, code_language,  local_dir,
             
     return codefilepath
     
-async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, stack_generation_prompt_dict):
+async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, stack_generation_prompt_dict, api_key, model_name):
     
     
     stack_dirname , stack_logfiles_dir =get_stack_name()
@@ -388,7 +388,7 @@ async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, 
     # Step 7: Generate module level stacks asynchronously
     
     #module_name=await (modular_stack_generator_main(module_prompt_dict, code_language, local_dir, stack_dirname, stack_logfiles_dir,stack_generation_prompt_dict))
-    responses=await(modular_stack_generator_main(module_prompt_dict, code_language, local_dir, stack_dirname, stack_logfiles_dir,stack_generation_prompt_dict))
+    responses=await(modular_stack_generator_main(module_prompt_dict, code_language, local_dir, stack_dirname, stack_logfiles_dir,stack_generation_prompt_dict, api_key, model_name))
     print("responses from async" , responses)
     
     #Step 8: Generate Staging Prompt

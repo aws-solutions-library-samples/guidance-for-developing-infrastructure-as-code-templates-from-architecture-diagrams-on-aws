@@ -11,7 +11,7 @@ import pprint
 from pprint import pprint
 import asyncio
 
-api_key = "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"
+#api_key = "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"
 role = "You are an expert in the latest version of AWS CDK and understanding of AWS services"
 
 
@@ -95,7 +95,7 @@ async def get_ai_response(session, api_key, role, prompt, model, base_url="https
         
         return response_with_line_breaks
 
-async def code_generation_do_it_all(session,module_name, module_prompt, local_dir, stack_dirname , code_language, stack_logfiles_dir,stack_generation_prompt_dict):
+async def code_generation_do_it_all(session,module_name, module_prompt, local_dir, stack_dirname , code_language, stack_logfiles_dir,stack_generation_prompt_dict, api_key,model_name):
     """
     """
     print("STARTING STACK GENERATION FOR MODULE NAME:" , module_name)
@@ -108,7 +108,7 @@ async def code_generation_do_it_all(session,module_name, module_prompt, local_di
     print("-----------------STEP 1 PROMPT---------------")
     pprint( step_1_prompt)
     
-    step_1_response= await get_ai_response(session,api_key, role, step_1_prompt,  model="llama-3.1-sonar-large-128k-online", base_url="https://api.perplexity.ai")
+    step_1_response= await get_ai_response(session,api_key, role, step_1_prompt,  model=model_name, base_url="https://api.perplexity.ai")
     
     write_log_to_file(step_1_response, local_dir, stack_logfiles_dir)
     print("-----------------STEP 1 RESPONSE---------------")
@@ -120,7 +120,7 @@ async def code_generation_do_it_all(session,module_name, module_prompt, local_di
     pprint(step_2_prompt)
     
     print("-----------------STEP 2 RESPONSE---------------")
-    step_2_response= await get_ai_response(session,api_key, role, step_2_prompt,  model="llama-3.1-sonar-large-128k-online", base_url="https://api.perplexity.ai")
+    step_2_response= await get_ai_response(session,api_key, role, step_2_prompt,  model=model_name, base_url="https://api.perplexity.ai")
     
     write_log_to_file(step_2_response,local_dir, stack_logfiles_dir)
     pprint(step_2_response)
@@ -131,7 +131,7 @@ async def code_generation_do_it_all(session,module_name, module_prompt, local_di
     print("step 3 prompt", step_3_prompt)
     
     print("-----------------STEP 3 RESPONSE---------------")
-    step_3_response= await get_ai_response(session,api_key, role, step_3_prompt,  model="llama-3.1-sonar-large-128k-online", base_url="https://api.perplexity.ai")
+    step_3_response= await get_ai_response(session,api_key, role, step_3_prompt,  model=model_name, base_url="https://api.perplexity.ai")
     
     write_log_to_file(step_3_response, local_dir, stack_logfiles_dir)
     pprint( step_3_response)
@@ -140,7 +140,7 @@ async def code_generation_do_it_all(session,module_name, module_prompt, local_di
     step_4_prompt = generate_step4_prompt(step_3_response, code_language, stack_generation_prompt_dict)
     print("step 4 prompt" , step_4_prompt)
     
-    step_4_response= await get_ai_response(session,api_key, role, step_4_prompt, model="llama-3.1-sonar-large-128k-online", base_url="https://api.perplexity.ai")
+    step_4_response= await get_ai_response(session,api_key, role, step_4_prompt, model=model_name, base_url="https://api.perplexity.ai")
     
     pprint(step_4_response)
     

@@ -36,7 +36,7 @@ export class ProcessingStack extends cdk.Stack {
         RESULTS_BUCKET_NAME: props.codeOutputBucket.bucketName,
         REGION: this.region,
         A2CAI_PROMPTS: 'a2cai_prompts.yaml',
-        API_KEY: apiKeySecret.secretArn,
+        MODEL_NAME: 'model_name.yaml',
         STACK_GENERATION_PROMPTS: 'stack_gen_prompts.yaml',
       },
       initialPolicy: [

@@ -200,6 +200,22 @@ def load_yaml_data(file_path):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         
+def load_model_name(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            data = yaml.safe_load(file)
+
+        if 'MODEL_NAME' in data:
+            return data['MODEL_NAME']
+        else:
+            print("Warning: Key 'MODEL_NAME' not found in the YAML file.")
+            return None
+    except FileNotFoundError:
+        print(f"Error: File '{file_path}' not found.")
+    except yaml.YAMLError as e:
+        print(f"Error: Failed to parse YAML file. {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")        
         
 def load_stack_generation_prompts(file_path):
     
