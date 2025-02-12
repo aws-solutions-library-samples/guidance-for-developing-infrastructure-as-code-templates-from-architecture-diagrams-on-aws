@@ -26,3 +26,4 @@ cdk.out
 
 .env
 cdk.context.json
+export_vars.sh
