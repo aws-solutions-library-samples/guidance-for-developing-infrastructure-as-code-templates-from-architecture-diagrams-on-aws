@@ -72,7 +72,7 @@ def invoke_claude_3_multimodal(prompt, base64_image_data, modelid):
 
         # Initialize the Amazon Bedrock runtime client
         client = boto3.client(
-            service_name="bedrock-runtime", region_name="us-west-2"
+            service_name="bedrock-runtime", region_name=os.environ["REGION"]
         )
 
         # Invoke the model with the prompt and the encoded image

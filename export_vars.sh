@@ -1,5 +1,5 @@
 #!/bin/bash
 export AWS_REGION="us-west-2"
 export CDK_QUALIFIER="a2c"; ### The CDK Qualifier name must match the name in package.json and cdk.json
-export AWS_PROFILE=""
-export AWS_ACCOUNT_ID=""
+export AWS_PROFILE="admin"
+export AWS_ACCOUNT_ID="278639569493"
