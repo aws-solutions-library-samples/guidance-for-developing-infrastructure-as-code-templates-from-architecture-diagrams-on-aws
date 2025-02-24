@@ -95,7 +95,7 @@ export class FrontEndStack extends cdk.Stack {
     // Create the EC2 instance
     const streamlitServer = new ec2.Instance(this, 'StreamlitServer', {
       vpc,
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.SMALL),
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.SMALL),
       machineImage: ec2.MachineImage.fromSsmParameter('/aws/service/canonical/ubuntu/server/focal/stable/current/amd64/hvm/ebs-gp2/ami-id'),
       securityGroup: securityGroup,
       userData: userData,

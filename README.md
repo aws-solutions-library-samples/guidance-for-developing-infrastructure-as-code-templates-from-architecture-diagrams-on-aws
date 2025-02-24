@@ -35,7 +35,7 @@ Coming soon
 - This Guidance can be deployed using Windows, MacOS, or Linux. 
 - An IDE, AWS CDK and AWS CLI are required.
 - NPM installed
-- Docker
+- Docker - IMPORTANT: In your Docker settings, verify that "Use containerd for pulling and storing images" is disabled. This setting causes issues with pushing Docker images to AWS ECR
 
 ### Third Party Tools
 Perplexity API Key

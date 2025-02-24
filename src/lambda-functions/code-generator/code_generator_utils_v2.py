@@ -10,6 +10,7 @@ from a2cai_v2 import *
 import pprint 
 from pprint import pprint
 import asyncio
+import aiohttp
 
 role = "You are an expert in the latest version of AWS CDK and understanding of AWS services"
 
@@ -75,23 +76,30 @@ def generate_step4_prompt(step_3_response,  code_language,stack_generation_promp
     return step_4_prompt
 
 
-async def get_ai_response(session, api_key, role, prompt, model, base_url="https://api.perplexity.ai"):
+async def get_ai_response( session: aiohttp.ClientSession , api_key, role, prompt: str,model, base_url="https://api.perplexity.ai/chat/completions") -> dict:
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
-    data = {
+    
+    payload = {
         "model": model,
         "messages": [
             {"role": "system", "content": role},
             {"role": "user", "content": prompt}
-        ]
+        ],
+        "max_tokens": 20000,
+        "temperature": 0.2
     }
     
-    async with session.post(f"{base_url}/chat/completions", headers=headers, json=data) as response:
-        response_json = await response.json()
+    async with session.post(base_url, json=payload, headers=headers) as response:
+        if response.status != 200:
+            error_text = await response.text()
+            print(f"Error response: {error_text}")
+        response.raise_for_status()
+        response_json= await response.json()
         response_with_line_breaks=response_json['choices'][0]['message']['content'].replace('\\n', '\n')
-        
         return response_with_line_breaks
 
 async def code_generation_do_it_all(session,module_name, module_prompt, local_dir, stack_dirname , code_language, stack_logfiles_dir,stack_generation_prompt_dict, api_key,model_name):
@@ -102,12 +110,12 @@ async def code_generation_do_it_all(session,module_name, module_prompt, local_di
     
     step_1_prompt= module_prompt + '\n' + stack_generation_prompt_dict['module_prompt_suffix']
     
-    # Step 41: Perplexity step 1
+    # Step 1: Perplexity step 1
     
     print("-----------------STEP 1 PROMPT---------------")
     pprint( step_1_prompt)
     
-    step_1_response= await get_ai_response(session,api_key, role, step_1_prompt,  model=model_name, base_url="https://api.perplexity.ai")
+    step_1_response= await get_ai_response(session,api_key, role, step_1_prompt,  model=model_name, base_url="https://api.perplexity.ai/chat/completions")
     
     write_log_to_file(step_1_response, local_dir, stack_logfiles_dir)
     print("-----------------STEP 1 RESPONSE---------------")
@@ -119,7 +127,7 @@ async def code_generation_do_it_all(session,module_name, module_prompt, local_di
     pprint(step_2_prompt)
     
     print("-----------------STEP 2 RESPONSE---------------")
-    step_2_response= await get_ai_response(session,api_key, role, step_2_prompt,  model=model_name, base_url="https://api.perplexity.ai")
+    step_2_response= await get_ai_response(session,api_key, role, step_2_prompt,  model=model_name, base_url="https://api.perplexity.ai/chat/completions")
     
     write_log_to_file(step_2_response,local_dir, stack_logfiles_dir)
     pprint(step_2_response)
@@ -130,7 +138,7 @@ async def code_generation_do_it_all(session,module_name, module_prompt, local_di
     print("step 3 prompt", step_3_prompt)
     
     print("-----------------STEP 3 RESPONSE---------------")
-    step_3_response= await get_ai_response(session,api_key, role, step_3_prompt,  model=model_name, base_url="https://api.perplexity.ai")
+    step_3_response= await get_ai_response(session,api_key, role, step_3_prompt,  model=model_name, base_url="https://api.perplexity.ai/chat/completions")
     
     write_log_to_file(step_3_response, local_dir, stack_logfiles_dir)
     pprint( step_3_response)
@@ -139,7 +147,7 @@ async def code_generation_do_it_all(session,module_name, module_prompt, local_di
     step_4_prompt = generate_step4_prompt(step_3_response, code_language, stack_generation_prompt_dict)
     print("step 4 prompt" , step_4_prompt)
     
-    step_4_response= await get_ai_response(session,api_key, role, step_4_prompt, model=model_name, base_url="https://api.perplexity.ai")
+    step_4_response= await get_ai_response(session,api_key, role, step_4_prompt, model=model_name, base_url="https://api.perplexity.ai/chat/completions")
     
     pprint(step_4_response)
     

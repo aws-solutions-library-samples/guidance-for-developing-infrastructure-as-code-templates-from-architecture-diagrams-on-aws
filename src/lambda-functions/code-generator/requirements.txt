@@ -3,7 +3,6 @@ boto3
 urllib3
 pybase64
 botocore
-langchain-community
-langchain-anthropic
-langchain
 openai
+aiohttp
+pyyaml

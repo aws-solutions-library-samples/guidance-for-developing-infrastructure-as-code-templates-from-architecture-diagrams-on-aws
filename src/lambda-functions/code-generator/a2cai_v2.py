@@ -330,14 +330,13 @@ async def modular_stack_generator_main(module_prompt_dict, code_language, local_
     
     return responses
     
-async def generate_staging_file (staging_prompt_dict, code_language,  local_dir, stack_logfiles_dir,stack_dirname):
+async def generate_staging_file (staging_prompt_dict, code_language, local_dir, stack_logfiles_dir,stack_dirname, api_key, model_name):
     
     #staging_prompt = staging_prompt_dict[0]['staging_prompt']
     staging_prompt = staging_prompt_dict['staging_prompt']
             
     async with aiohttp.ClientSession() as session:
-        staging_prompt_response= await get_ai_response(session,api_key, role, staging_prompt, model="llama-3.1-sonar-large-128k-online", base_url="https://api.perplexity.ai")
-    
+        staging_prompt_response= await get_ai_response(session,api_key, role, staging_prompt, model=model_name, base_url="https://api.perplexity.ai/chat/completions")
     write_log_to_file(staging_prompt_response, local_dir, stack_logfiles_dir)
             
     #local_dirpath, codefilepath = write_code_to_file(staging_prompt_response, local_dir,stack_logfiles_dir,code_language)
@@ -398,7 +397,7 @@ async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, 
     
     # Step 9: Generate Staging File to Orchestrate the stacks. 
     
-    codefilepath= await (generate_staging_file (staging_prompt_dict, code_language,  local_dir, stack_logfiles_dir,stack_dirname))
+    codefilepath= await (generate_staging_file (staging_prompt_dict, code_language,  local_dir, stack_logfiles_dir,stack_dirname, api_key, model_name))
     #write_code_to_file(code_str, local_dir,stack_dirname, module_name,code_language)
     
     # Step 10: zip the directory with the scripts (destpath to be defined)
