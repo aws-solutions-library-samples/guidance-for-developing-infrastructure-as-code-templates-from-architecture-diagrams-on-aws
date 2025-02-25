@@ -24,14 +24,15 @@ def get_stack_name():
     return  stack_dirname, stack_logfiles_dir
 
 
-def write_code_to_file(code_str, local_dir,stack_dirname, code_language, module_name):
+def write_code_to_file(code_str, local_dir, stack_dirname, code_language, module_name):
     """
-
-    
     writes genearetd code strings of modules to code files in the local stack folder
     """
-    
-    pattern = r'``python\n(.*?)\n``'
+
+    if code_language.lower() == 'python':
+        pattern = r'``python\n(.*?)\n``'
+    elif code_language.lower() == 'typescript':
+        pattern = r'``typescript\n(.*?)\n``'
 
     code = re.search(pattern, code_str, re.DOTALL).group(1)
     
@@ -39,30 +40,30 @@ def write_code_to_file(code_str, local_dir,stack_dirname, code_language, module_
     os.makedirs(makedirpath, exist_ok=True)
     print("CODE DIR PATH", makedirpath)
 
-    if code_language.lower() =='python': 
+    if code_language.lower() == 'python': 
         filename = module_name.lower().replace(' module', '').replace(' ', '_') + '_stack' + ".py"
-    elif code_language.lower() =='typescript' :
+    elif code_language.lower() == 'typescript' :
         filename = module_name.lower().replace(' module', '').replace(' ', '_') + '_stack' + ".ts"
     
-   
     code_file_path = os.path.join(makedirpath, filename)
     
     with open(code_file_path, 'w') as f:
         f.write(code)
     
-    print("CODE FILE PATH" , code_file_path)  
+    print("CODE FILE PATH", code_file_path)  
     
     return code_file_path 
 
 
 def write_staging_code_to_file(code_str, local_dir, stack_dirname, code_language):
     """
-
-    
     writes code to app.py file in the local stack folder
     """
     
-    pattern = r'``python\n(.*?)\n``'
+    if code_language.lower() == 'python':
+        pattern = r'``python\n(.*?)\n``'
+    elif code_language.lower() == 'typescript':
+        pattern = r'``typescript\n(.*?)\n``'
     makedirpath =os.path.join(local_dir,stack_dirname) 
     os.makedirs(makedirpath, exist_ok=True)
     
@@ -78,7 +79,7 @@ def write_staging_code_to_file(code_str, local_dir, stack_dirname, code_language
     with open(code_file_path, 'w') as f:
         f.write(code)
     
-    print("CODE FILE PATH" , code_file_path)  
+    print("CODE FILE PATH", code_file_path)  
     
     return code_file_path 
 

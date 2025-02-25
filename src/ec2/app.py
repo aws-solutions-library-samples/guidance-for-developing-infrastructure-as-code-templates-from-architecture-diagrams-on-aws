@@ -190,11 +190,13 @@ def home_page():
                 st.session_state.show_uploader = True
                 st.rerun()
 
-        user_email = st.text_input("Enter your email")
+        # Uncomment below line and remove placeholder if enabling emailing code output
+        # user_email = st.text_input("Enter your email")
+        user_email = "placeholder@placeholder.com"
 
         code_language = st.selectbox(
             "Select your code output language",
-            ("Python", "Typescript")
+            ("Typescript", "Python")
         )
 
         s3_bucket_name = os.environ.get('S3_BUCKET_NAME')
@@ -258,7 +260,7 @@ def how_to_use_page():
     st.write("1. Users upload a high quality PNG image of a AWS Architecture diagram for any Data Platform type architecture. These are generally derived from the AWS Modern Data Architecture Framework - reflecting capabilities for streaming, ETL, ingestion type architectures encompassing AWS Data, Analytics and Database services.")
     st.write("2. Although Architec2Code(A2C) AI can process and generate CDK stacks for any AWS Architecture drawing, its fine-tuned for high quality Infrastructure as Code")
     st.write("3. A2C AI will first analyse the drawing and provide a response to the answer with a description of what it sees, also initiating the workflow for code synthesis in parallel")
-    st.write("4. Once the Code synthesis is complete, the underlying Agent will commit the produced code to an S3 bucket and notify the users by E-mail with a pre-signed url to download the code.")
+    st.write("4. Once the Code synthesis is complete, the underlying Agent will commit the produced code to an S3 bucket and notify the users by E-mail with a pre-signed url to download the code (if email functionality is enabled).")
 
 def about_us_page():
     st.title("About Us")
