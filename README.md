@@ -16,13 +16,13 @@
 - [Authors](#authors)
 
 ## Overview
-The Journey from Architecture drawings to their deployment can be vastly accelerated by leveraging the potential of Large Language Models. However , given that IaC tools like AWS CDK(Cloud Development Kit) evolve rapidly with frequent new releases /updates , leveraging stand alone LLM’s trained in the past often leads to inaccuracies and hallucinations, when they are used to produce CDK stacks using AWS CDK. 
+The Journey from Architecture drawings to their deployment can be vastly accelerated by leveraging the potential of Large Language Models. However, given that IaC tools like AWS CDK(Cloud Development Kit) evolve rapidly with frequent new releases/updates, leveraging stand alone LLMs trained in the past often leads to inaccuracies and hallucinations when they are used to produce IaC stacks using AWS CDK. 
 
-In addition, for architecture drawing that have higher levels of complexity, highly elaborate and nuanced prompts are essential to produce truly deployable IaC templates. Prompting efforts from the user also scale exponentially as the complexity levels of the architecture under consideration are increased.
+In addition, for architecture drawings that have higher levels of complexity, highly elaborate and nuanced prompts are essential to produce truly deployable IaC templates. Prompting efforts from the user also scale exponentially as the complexity levels of the architecture under consideration are increased.
 
-This guidance helps users to produce accurate, natively modular AWS CDK stacks  in Python and in typescript with the CDK constructs/syntax retrieved from the latest AWS CDK release. In addition , the required IAM Roles and permissions are also identified and added to the stacks automatically during the code generation process. this is achieved using highly Optimized Chain of Thought prompting for IaC generation in combination with  online LLM’s for code generation and leveraging multimodal LLM’s for Architecture diagram Analysis. 
+This guidance helps users to produce accurate, natively modular AWS CDK stacks in Python and TypeScript with the CDK constructs/syntax retrieved from the latest AWS CDK release. In addition, the required IAM Roles and permissions are also identified and added to the stacks automatically during the code generation process. This is achieved using highly Optimized Chain of Thought prompting for IaC generation in combination with online LLMs for code generation and leveraging multimodal LLMs for Architecture diagram Analysis. 
 
-In addition , Architec2Code AI leverages the multimodal capabilities of LLM’s in combination with carefully optimized Prompts to produce a nuanced understanding of the provided architecture - analysing not only the individual resources present, but distinct functional modules , interactions between AWS resources or account boundaries that maybe depicted in the architecture , informing the code generation process accordingly. 
+Architec2Code AI leverages the multimodal capabilities of LLMs in combination with carefully optimized Prompts to produce a nuanced understanding of the provided architecture - analyzing not only the individual resources present, but distinct functional modules, interactions between AWS resources or account boundaries that maybe depicted in the architecture, informing the code generation process accordingly. 
 
 ![Solution Architecture](docs/a2c-architecture.png)
 
@@ -56,7 +56,7 @@ git clone git@github.com:aws-solutions-library-samples/guidance-for-developing-i
 ```
 ### 2. Edit configuration files
 Open the project folder in your IDE and edit the following files:
-- export_vars.sh - This file contains all of the necessary deployment configuration env variables. Update the placeholder values with the correct ones for your targeted deployment account.
+- export_vars.sh - This file contains all of the necessary deployment configuration environment variables. Update the placeholder values with the correct ones for your targeted deployment account.
 - (OPTIONAL) package.json  - The config section of this file can be modified to change the Application Name and CDK Qualifier
 - (OPTIONAL) cdk.json - The CDK Qualifier must also be updated here if modifying.
 - (OPTIONAL) bin/datahackathon.ts - Update the recipientEmailAddresses array under the ProcessingStack with user emails who wish to receive notifications when newly generated code is uploaded to the S3 output bucket. 
@@ -67,16 +67,20 @@ Open your IDE CLI and run the follwing commands:
 chmod +x export_vars.sh
 source export_vars.sh
 ```
+NOTE: For updates and future deplyoments, the 'source' command needs to be run every time a new CLI session is created to set the environment variables.
+
 ### 4. Install dependencies
 Install the required CDK dependencies.
 ```bash
 npm ci
 ```
+
 ### 5. Bootstrap the account
 Prepare the account for CDK deployment.
 ```bash
 cdk bootstrap --profile $AWS_PROFILE --qualifier ${CDK_QUALIFIER} aws://${AWS_ACCOUNT_ID}/${AWS_REGION}
 ```
+
 ### 6. Create AWS Secret and Upload API Key
 In the AWS Console, navigate to Secrets Manager create a new secret with the name 'A2C_API_KEY' and the value set to your Perplexity API key.
 
@@ -87,9 +91,9 @@ cdk deploy --all --require-approval never
 ```
 
 ## Deployment Validation
-Open CloudFormation console and verify the status of the template with the name starting with “A2C”.
+Open CloudFormation console and verify the status of the three stacks that were deployed: 'A2C-AI-StorageStack', 'A2C-AI-ProcessingStack' and 'A2C-AI-FrontEndStack'.
 
-If deployment is successful, you should see a running EC2 instance with the name starting with “A2C” in the EC2 console.
+If deployment is successful, you should see a running EC2 instance with the name "A2C-AI-FrontEndStack/StreamlitServer" in the EC2 console.
 Configuration of the EC2 instance takes approximately 3 to 5 minutes after stack deployment completes. Please allow extra time for this to happen before proceeding.
  
 Verify that the web page is functioning correctly by navigating to the CloudFormation console, selecting the FrontEndStack, and selecting the Outputs tab. Here you will see the public DNS name of the instance that will open the server’s public web page. Note: The page is accessible over HTTP only, not HTTPS. Verify that your browser is not defaulting to an HTTPS connection if experiencing connection issues.
@@ -116,13 +120,11 @@ a. Pay attention to the image clarity and the conceptual clarity of the architec
 
 b. For reviewing and optimizing the generated CDK stacks, consider using the Amazon Q Developer extension on your IDE. Use the inline chat feature and ask Q to review the correctness and further optimize the generated stack for any additional best practices.  The authors highly recommend the combined use of Architec2Code AI and Amazon Q developer for rapid implementation of AWS architectures and a truly Next Generation Developer Experience. 
 
-
 2. How can we adapt this solution so that the generated code is natively compatible with the user’s/organization’s development practices/specifications ?
-
 
 In order to customize the implementation already during the code generation process, the module_prompts.yaml needs to be edited to list the requirements. Examples are shown how naming conventions can be specified for s3 buckets , attribute preferences for Lambda consructs. 
 
-3. How can  the user alter the model used for the code generation process? 
+3. How can the user alter the model used for the code generation process? 
 
 As described above in the next steps section
 
