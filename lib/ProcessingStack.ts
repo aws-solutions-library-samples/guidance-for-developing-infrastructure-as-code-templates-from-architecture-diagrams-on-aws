@@ -52,7 +52,7 @@ export class ProcessingStack extends cdk.Stack {
         }),
         new iam.PolicyStatement({
           actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-          resources: [`arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-5-sonnet-*`],
+          resources: ['*'],
         }),
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],

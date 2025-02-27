@@ -240,7 +240,7 @@ def home_page():
     with right_col:
         # Display the Lambda function return value
         if st.session_state.lambda_response:
-            st.subheader("Architecture summary")
+            #st.subheader("Architecture summary")
 
             # Ensure lambda_response is parsed as JSON if it's a string
             if isinstance(st.session_state.lambda_response, str):
