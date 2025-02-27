@@ -58,7 +58,7 @@ export class FrontEndStack extends cdk.Stack {
         }),
         new iam.PolicyStatement({
             actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-            resources: [`arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-5-sonnet-*`],
+            resources: [`arn:aws:bedrock:${this.region}::foundation-model/*`],
         }),
       ],
     });

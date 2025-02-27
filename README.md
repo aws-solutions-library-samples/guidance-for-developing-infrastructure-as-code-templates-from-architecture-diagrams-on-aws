@@ -110,6 +110,9 @@ Verify that the web page is functioning correctly by navigating to the CloudForm
 
 ## Cleanup
 Delete all 3 A2C Cloudformation stacks using the Cloudformation console or CDK destroy commands. All three S3 buckets deployed in this solution will automatically be emptied and deleted upon stack removal.
+```bash
+cdk destroy --all
+```
 
 ## FAQ, known issues, additional considerations, and limitations
 
