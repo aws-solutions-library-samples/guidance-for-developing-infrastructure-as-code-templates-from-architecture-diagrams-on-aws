@@ -44,8 +44,9 @@ Perplexity API Key
 Approved Bedrock access to Claude 3.5 Sonnet and Claude 3.7 Sonnet in the desired deployment region.
 
 ### Supported Regions
-Any region that supports Claude 3.5 Sonnet on Bedrock is a viable deployment target. 
+Any region that supports the required Claude models on Bedrock is a viable deployment target. 
 This currently includes: us-east-1, us-west-2, eu-central-1, ap-northeast-1, and ap-southeast-1.
+NOTE: us-east-1 is currently experiencing throttling issues with Claude 3.7 Sonnet. Deployment to other regions is strongly advised.
 
 ## Deployment Steps
 
