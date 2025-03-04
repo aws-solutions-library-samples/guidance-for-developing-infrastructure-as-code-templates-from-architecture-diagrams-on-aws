@@ -41,7 +41,7 @@ Coming soon
 Perplexity API Key
 
 ### AWS Account Requirements
-Approved Bedrock access to Claude 3.5 Sonnet in the desired deployment region.
+Approved Bedrock access to Claude 3.5 Sonnet and Claude 3.7 Sonnet in the desired deployment region.
 
 ### Supported Regions
 Any region that supports Claude 3.5 Sonnet on Bedrock is a viable deployment target. 
