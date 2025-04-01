@@ -57,7 +57,7 @@
     "@cloudcomponents/cdk-pull-request-check": "2.1.0",
     "@types/uuid": "9.0.3",
     "@typescript-eslint/visitor-keys": "5.62.0",
-    "aws-cdk-lib": "^2.178.0",
+    "aws-cdk-lib": "^2.186.0",
     "cdk-monitoring-constructs": "5.10.1",
     "cdk-nag": "2.27.129",
     "constructs": "10.2.70",
