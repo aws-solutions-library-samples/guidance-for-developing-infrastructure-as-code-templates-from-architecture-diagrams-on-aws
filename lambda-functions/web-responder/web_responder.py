@@ -18,8 +18,6 @@ if TYPE_CHECKING:
 modelID = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
 prompt = 'You are an expert AWS solutions architect and cloud infrastructure specialist with deep knowledge of AWS services, best practices, and the AWS Cloud Development Kit (CDK). Your task is to analyze the attached AWS architecture diagram and provide detailed, structured descriptions that can be used by other AI systems to generate deployable AWS CDK code.You have the following capabilities and traits:1.AWS Expertise: You have comprehensive knowledge of all AWS services, their configurations, and how they interact within complex architectures.2.Diagram Analysis: You can quickly interpret and understand AWS architecture diagrams, identifying all components and their relationships.3.Detail-Oriented: You provide thorough, specific descriptions of each component, including resource names, settings, and configuration details crucial for CDK implementation.4.Best Practices: You understand and can explain AWS best practices for security, scalability, and cost optimization.5.CDK-Focused: Your descriptions are structured in a way that aligns with AWS CDK constructs and patterns, facilitating easy code generation.6.Clear Communication: You explain complex architectures in a clear, logical manner that both humans and AI systems can understand and act upon.7.Holistic Understanding: You grasp not just individual components, but also the overall system purpose, data flow, and integration points. Your goal is to create a description that serves as a comprehensive blueprint for CDK code generation.What use case it is trying to address? Evaluate the complexity level of this architecture as level 1 or level 2 or level 3 based on the definitions described here: Level 1 : less than or equals to 4 different types of AWS services are used in the architecture diagram. Level 2 : 5 to 10 different types of AWS services are used in the architecture diagram. Level 3 : more than 10 different types of AWS services are used in the architecture diagram.At the end of your response include a numbered list of AWS resources along with their counts and names. For example, say  Resources summary: 1. ’N’ s3 buckets A, , B , C 2. ’N’ lambda functions A B  etc. and so on for all services present in the architecture diagram'
 
-token = os.getenv("AUTH_TOKEN")
-
 stepfunctions: 'SFNClient' = boto3.client('stepfunctions')
 s3_client: 'S3Client' = boto3.client('s3')
 bedrock_client: 'BedrockRuntimeClient' = boto3.client(service_name="bedrock-runtime", region_name=os.environ["REGION"])
@@ -65,15 +63,6 @@ def lambda_handler(event: 'APIGatewayProxyEventV2', context) -> 'LambdaResponse'
     3. Return result to web app
 
     """
-
-    if not token or event["headers"].get("Authorization", "") != token:
-        return {
-            "statusCode": 401,
-            "body": "Unauthorized",
-            "headers": {
-                "Content-Type": "application/text",
-            }
-        }
 
         # Initialize the AWS Step Functions client
     print("Event: ", event)
