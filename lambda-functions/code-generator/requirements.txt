@@ -1,0 +1,8 @@
+requests
+boto3
+urllib3
+pybase64
+botocore
+openai
+aiohttp
+pyyaml

@@ -52,13 +52,7 @@ function App() {
             tools={<HelpPanel header={<h2>Overview</h2>}>Help content</HelpPanel>}
             content={
                 <ColumnLayout  columns={2}>
-                <Container
-                    header={
-                        <Header variant="h2" >
-                            Input
-                        </Header>
-                    }
-                >
+                <Container>
                     <SpaceBetween size={"l"}>
                         <FormField stretch={true}>
                         <FileDropzone onChange={x=>0}>
@@ -78,7 +72,7 @@ function App() {
                         </FormField>
                     </SpaceBetween>
                 </Container>
-                    <Container header={<Header variant="h2">Output</Header>}>
+                    <Container >
                         <div>Architecture analysis and code will appear here after processing</div>
                     </Container>
                 </ColumnLayout>
