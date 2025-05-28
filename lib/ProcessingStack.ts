@@ -5,7 +5,6 @@ import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
 interface Props extends cdk.StackProps {
@@ -60,6 +59,11 @@ export class ProcessingStack extends cdk.Stack {
         }),
       ],
     });
+
+    // Add AmazonBedrockFullAccess managed policy to the Lambda function
+    processingLambda.role?.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSESFullAccess')
+    );
 
     const lambdaProcessingTask = new tasks.LambdaInvoke(this, 'Processing', {
       lambdaFunction: processingLambda,

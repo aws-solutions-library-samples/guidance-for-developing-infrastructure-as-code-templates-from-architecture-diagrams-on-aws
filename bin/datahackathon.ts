@@ -16,7 +16,6 @@ const storageStack = new StorageStack(app, `${AppConfig.applicationName}-Storage
 const frontEndStack = new FrontEndStack(app, `${AppConfig.applicationName}-FrontEndStack`, {
   env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
   diagramStorageBucket: storageStack.diagramStorageBucket,
-  streamlitServerBucket: storageStack.streamlitServerBucket,
   applicationQualifier: AppConfig.applicationQualifier,
 });
 

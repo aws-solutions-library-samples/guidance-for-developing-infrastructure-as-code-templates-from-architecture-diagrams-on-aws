@@ -12,9 +12,9 @@ COPY requirements.txt  ${LAMBDA_TASK_ROOT}
 RUN pip3 install -r requirements.txt
 
 # Copy the rest of your application code
-COPY streamlit_responder_main.py ${LAMBDA_TASK_ROOT} 
-COPY streamlit_responder_utils.py ${LAMBDA_TASK_ROOT} 
+COPY web_responder_main.py ${LAMBDA_TASK_ROOT} 
+COPY web-responder_config.yaml ${LAMBDA_TASK_ROOT}
 
 # Set the CMD to your handler function
 # Replace "app.handler" with your actual handler function
-CMD [ "streamlit_responder_main.lambda_handler" ]
+CMD [ "web_responder_main.lambda_handler" ]

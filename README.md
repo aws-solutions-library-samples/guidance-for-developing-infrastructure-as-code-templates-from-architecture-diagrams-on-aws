@@ -26,9 +26,9 @@ Architec2Code AI  with its intrinsic multi-agentic design , leverages the multim
 
 ![Solution Architecture](docs/a2c-architecture.png)
 
-1. An Amazon EC2 instance acts as the Streamlit webserver for the application frontend.  It accepts the architecture diagram uploaded by the user as an input 
+1. An Amazon ECS Fargate service behind an Application Load Balancer hosts the React webserver for the application frontend. It accepts the architecture diagram uploaded by the user as an input 
 2. The uploaded diagrams are stored on a Amazon Simple Storage Service (Amazon S3) bucket. 
-3. The Streamlit responder Lambda invokes Amazon Bedrock API to perform an Image analysis.
+3. The web responder Lambda invokes Amazon Bedrock API to perform an Image analysis.
 4. A comprehensive summary of the architecture describing use case, workflow and the different AWS services used is generated and returned to the frontend.  
 5. The generated architecture description is further passed to a chain of thought processing for AWS CDK code generation. 
 6. The step function workflow generates a modular AWS CDK stack in the language of choice provided by the user.
@@ -36,7 +36,7 @@ Architec2Code AI  with its intrinsic multi-agentic design , leverages the multim
 8. After a successful execution of the workflow, users receives a Amazon Simple Notification Service (Amazon SNS) notification with a pre-signed URL to download the generated AWS CDK scripts as a zip file. A prior subscription to the SNS topic from the user is a pre-requisite to receive the said notifications .
 
 ### Cost
-You are responsible for the cost of the AWS services used while running this Guidance. The cost for running this Guidance with the default settings in the us-west-2 (Oregon) region is approximately $20 per month for conversion of around 50 architecture diagrams to IaC. Also major portion of the costs is a fixed cost related to the EC2 instance being used to host the Streamlit web application. 
+You are responsible for the cost of the AWS services used while running this Guidance. The cost for running this Guidance with the default settings in the us-west-2 (Oregon) region is approximately $20 per month for conversion of around 50 architecture diagrams to IaC. Also major portion of the costs is a fixed cost related to the ECS, Fargate, and Application Load Balancer services being used to host the React web application. 
  We recommend creating a Budget through AWS Cost Explorer to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance.
 
 ## Prerequisites
@@ -103,12 +103,33 @@ cdk deploy --all --require-approval never
 ```
 
 ## Deployment Validation
-Open CloudFormation console and verify the status of the three stacks that were deployed: 'A2C-AI-StorageStack', 'A2C-AI-ProcessingStack' and 'A2C-AI-FrontEndStack'.
 
-If deployment is successful, you should see a running EC2 instance with the name "A2C-AI-FrontEndStack/StreamlitServer" in the EC2 console.
-Configuration of the EC2 instance takes approximately 3 to 5 minutes after stack deployment completes. Please allow extra time for this to happen before proceeding.
- 
-Verify that the web page is functioning correctly by navigating to the CloudFormation console, selecting the FrontEndStack, and selecting the Outputs tab. Here you will see the public DNS name of the instance that will open the server’s public web page. Note: The page is accessible over HTTP only, not HTTPS. Verify that your browser is not defaulting to an HTTPS connection if experiencing connection issues.
+1. **CloudFormation Verification**  
+   - Confirm successful creation of three stacks in CloudFormation:  
+     - `A2C-AI-StorageStack`  
+     - `A2C-AI-ProcessingStack`  
+     - `A2C-AI-FrontEndStack`  
+
+2. **ECS Service Validation**  
+   - In the Amazon ECS console, verify:  
+     - The `a2c-ECS-Cluster` is in **ACTIVE** status  
+     - There are running tasks for the `A2C-AI-FrontEndStack-a2cALBfargateserviceService` family  
+     - The number of healthy tasks matches the desired count  
+
+3. **Load Balancer Check**  
+   - In the EC2 Console under Load Balancers:  
+     - Confirm the Application Load Balancer (`A2C-AI-a2cAL`) is healthy  
+     - The associated target group shows healthy ECS tasks as registered targets  
+
+4. **Web Application Access**  
+   - Retrieve the ALB DNS name from:  
+     - The **Outputs** tab of the `A2C-AI-FrontEndStack` in CloudFormation  
+     - Or from the Load Balancer console under DNS name  
+   - Access the application via `http://<ALB-DNS-NAME>`  
+   - **Note:** The application is accessible over HTTP only. Ensure your browser is not redirecting to HTTPS if you encounter connection issues.  
+
+> Allow 5–7 minutes after stack completion for ECS service initialization and container provisioning. The ALB health checks may take 2–3 minutes to show healthy status after tasks become active.
+
 
 ## Running the Guidance
 1. Navigate to the web page
@@ -168,4 +189,4 @@ Online LLM icon- AI icon  by Merlin D, from The Noun Project CC BY 3.0
 Search Index Icon - Search icon by Wilson Joseph, from The Noun Project CC BY 3.0 
 
 ## Authors
-Srikrishna Chaitanya Konduru, Benjamin Pawlowski, Srikanth Potu
+Srikrishna Chaitanya Konduru, Benjamin Pawlowski, Srikanth Potu, Bertram Varga

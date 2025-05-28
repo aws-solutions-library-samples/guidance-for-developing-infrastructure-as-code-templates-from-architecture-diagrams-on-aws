@@ -8,17 +8,7 @@ from yaml.loader import SafeLoader
 
 def get_api_key_from_secrets():
     """
-    Retrieves API key from AWS Secrets Manager.
-    
-    This function creates a boto3 session and client to interact with AWS Secrets Manager.
-    It retrieves a secret value stored with the name 'A2C_API_KEY' which contains the API key
-    needed for authentication.
-
-    Returns:
-        str: The API key value retrieved from Secrets Manager
-
-    Raises:
-        Exception: If there is an error retrieving the secret from Secrets Manager
+    Retrieves API key from AWS Secrets Manager
     """
     session = boto3.session.Session()
     client = session.client('secretsmanager')
@@ -93,4 +83,25 @@ async def async_lambda_handler(event, context):
 def lambda_handler(event, context):
     loop = asyncio.get_event_loop()
     result = loop.run_until_complete(async_lambda_handler(event, context))
+    
+    # client = boto3.client('ses')
+
+    # client.send_email(
+    #     Destination={
+    #         'ToAddresses': [event['user_email']]
+    #     },
+    #     Message={
+    #         'Body': {
+    #             'Text': {
+    #                 'Charset': 'UTF-8',
+    #                 'Data': f"Your CDK code is ready. Please use this link to download the files. The link will be vaild for 48 hours.\n\n{result['presigned_url']}",
+    #             }
+    #         },
+    #         'Subject': {
+    #             'Charset': 'UTF-8',
+    #             'Data': 'Your CDK Code is Ready',
+    #         },
+    #     },
+    #     Source='Architec2Code@architec2code.com'
+    # )
     return result
