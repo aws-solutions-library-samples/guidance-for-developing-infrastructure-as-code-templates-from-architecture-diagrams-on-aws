@@ -53,7 +53,6 @@ function App() {
                     credentials: "include",
                     headers: {
                         "Content-Type": "application/json",
-                       // "Authorization": "TGIF20250425"
                     },
                 }
             );
