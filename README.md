@@ -150,6 +150,7 @@ cdk destroy A2C-AI-FrontEndStack
 cdk destroy A2C-AI-ProcessingStack
 cdk destroy A2C-AI-StorageStack
 ```
+NOTE: If the Front-End stack was deployed using default settings, a new VPC has been created for the ALB. This CloudFormation stack deletion will fail and require manual component deletion of a VPC endpoint and associated subnet.
 
 ## FAQ, known issues, additional considerations, and limitations
 
