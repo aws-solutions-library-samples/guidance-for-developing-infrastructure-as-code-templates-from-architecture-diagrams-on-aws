@@ -135,6 +135,7 @@ cdk deploy --all --require-approval never
 1. Navigate to the web page
 2. Upload a high quality PNG image of a AWS Architecture diagram for any Data Platform type architecture. These are generally derived from the AWS Modern Data Architecture Framework - reflecting capabilities for streaming, ETL, ingestion type architectures encompassing AWS Data, Analytics and Database services. A folder of architecture diagram samples has been provided in this repo.
 3. A2C AI will first analyse the drawing and provide a response to the answer with a description of what it sees, also initiating the workflow for code synthesis in parallel. 
+4. Once the code synthesis is completed, the results will be uploaded to the code output S3 bucket under a folder named with the date and time of the event. If email addresses were added to the SNS topic, then a completion notification with a link to download the code from S3 will also be recieved.
 
 ## Next Steps
 Users can explore the following customizations to adapt/optimize the solution to their preferences
