@@ -219,7 +219,7 @@ def web_responder_do_it_all(image_data_base64: str, image_mime: str) -> Analysis
 
     start_time = time.time()
     # Step 3: Get Claude Response
-    claude_response: ClaudeResponse = invoke_claude_3_multimodal(prompt, image_data_base64, image_mime, modelID)
+    claude_response: ClaudeResponse = invoke_claude_3_multimodal(prompt, image_data_base64, image_mime, model_id)
     execution_time = time.time() - start_time
 
     return {

@@ -144,9 +144,11 @@ Users can explore the following customizations to adapt/optimize the solution to
 2. Email notifications to end users: By default, this solution deploys an SNS topic that is intended for administrators to add their emails to. They will automatically be subscribed to the topic upon solution deployment and will receive a notification every time the service is used, along with a link to download the code output from S3. In order to enable webpage email input, SES can be integrated into the solution by having the Processing Lambda function send its output notifications to SES in addition to SNS. The solution is already configured to pass along a user’s email in the event payload to the Processing Lambda. Proper IAM permissions must be added to the function and SES configuration must be completed in the account separately.
 
 ## Cleanup
-Delete all 3 A2C Cloudformation stacks using the Cloudformation console or CDK destroy commands. All three S3 buckets deployed in this solution will automatically be emptied and deleted upon stack removal.
+Delete all 3 A2C Cloudformation stacks using the Cloudformation console or CDK destroy commands. All three S3 buckets deployed in this solution will automatically be emptied and deleted upon stack removal. Remove stacks in the following order to avoid failures due to cross-stack dependencies.
 ```bash
-cdk destroy --all
+cdk destroy A2C-AI-FrontEndStack
+cdk destroy A2C-AI-ProcessingStack
+cdk destroy A2C-AI-StorageStack
 ```
 
 ## FAQ, known issues, additional considerations, and limitations
