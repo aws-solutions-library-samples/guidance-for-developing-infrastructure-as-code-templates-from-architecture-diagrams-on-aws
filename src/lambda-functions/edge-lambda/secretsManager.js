@@ -2,7 +2,7 @@ const AWS = require('aws-sdk');
 
 const name = "cognitoClientSecrets-frontend";
 // Lambda@Edge runs in us-east-1 but needs to access secrets in the deployment region
-// We'll try multiple regions to find the secret
+// Can't pass deployment region as environment variable so try multiple regions to find the secret
 const regions = ['us-west-2', 'us-east-1', 'eu-central-1', 'ap-northeast-1', 'ap-southeast-1'];
 
 let secretsCache = null;

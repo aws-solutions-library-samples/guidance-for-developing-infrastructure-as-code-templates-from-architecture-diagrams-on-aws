@@ -162,7 +162,7 @@ export class FrontEndStack extends cdk.Stack {
     const viewerRequestEdgeLambda = new cloudfront.experimental.EdgeFunction(this, "CloudFrontAuthEdge", {
       code: lambda.Code.fromAsset(path.join(__dirname, '../src/lambda-functions/edge-lambda')),
       handler: "index.handler",
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_20_X,
       functionName: `${props.applicationQualifier}-cloudfront-auth`,
       description: "CloudFront Lambda@Edge for Cognito authentication",
       initialPolicy: [
