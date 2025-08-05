@@ -73,15 +73,6 @@ function App() {
         );
     }
 
-    // If not authenticated, show login message (shouldn't happen with Lambda@Edge)
-    if (!isAuthenticated) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <div>Please log in to access the application.</div>
-            </div>
-        );
-    }
-
     async function onSubmit() {
         try {
             const start = new Date().getTime()

@@ -192,20 +192,9 @@ export class FrontEndStack extends cdk.Stack {
         }],
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-        originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN,
-        compress: true,
-      },
-      additionalBehaviors: {
-        '/static/*': {
-          origin: new origins.LoadBalancerV2Origin(this.service.loadBalancer, {
-            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY
-          }),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-          originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN,
-          compress: true,
-        }
+        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+        compress: false,
       },
       errorResponses: [
         {
@@ -276,9 +265,6 @@ export class FrontEndStack extends cdk.Stack {
         UserPoolID: cdk.SecretValue.unsafePlainText(this.userPool.userPoolId),
         UserPoolAppId: cdk.SecretValue.unsafePlainText(this.userPoolClient.userPoolClientId),
         DomainName: cdk.SecretValue.unsafePlainText(`${this.userPoolDomain.domainName}.auth.${this.region}.amazoncognito.com`),
-        RedirectPathSignIn: cdk.SecretValue.unsafePlainText('/'),
-        RedirectPathSignOut: cdk.SecretValue.unsafePlainText('/'),
-        RedirectPathAuthRefresh: cdk.SecretValue.unsafePlainText('/'),
       }
     });
 

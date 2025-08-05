@@ -1,32 +1,15 @@
 const AWS = require('aws-sdk');
 
 const name = "cognitoClientSecrets-frontend";
-// Lambda@Edge runs in us-east-1 but needs to access secrets in the deployment region
-// Can't pass deployment region as environment variable so try multiple regions to find the secret
-const regions = ['us-west-2', 'us-east-1', 'eu-central-1', 'ap-northeast-1', 'ap-southeast-1'];
-
-let secretsCache = null;
+const primarySecretManager = new AWS.SecretsManager({
+  region: 'us-west-2', // Set to deployment region
+});
 
 
 const getSecrets = async () => {
-  if (secretsCache) {
-    return secretsCache;
-  }
-  
-  // Try each region until we find the secret
-  for (const region of regions) {
-    try {
-      const secretsManager = new AWS.SecretsManager({ region });
-      const secrets = await getSecretsInternal(secretsManager);
-      secretsCache = secrets;
-      return secrets;
-    } catch (error) {
-      console.log(`Failed to get secrets from region ${region}:`, error.message);
-      continue;
-    }
-  }
-  
-  throw new Error('Could not retrieve secrets from any region');
+  let secrets;
+  secrets = await getSecretsInternal(primarySecretManager)
+  return secrets
 }
 
 const getSecretsInternal = async client => {
@@ -61,7 +44,7 @@ const getSecretsInternal = async client => {
       if ('SecretString' in data) {
         secrets = data.SecretString;
       } else {
-        const buff = Buffer.from(data.SecretBinary, 'base64');
+        const buff = new Buffer(data.SecretBinary, 'base64');
         secrets = buff.toString('ascii');
       }
 
