@@ -108,9 +108,14 @@ export class FrontEndStack extends cdk.Stack {
       allowAllOutbound: true
     });
 
-    // Use AWS managed prefix list for CloudFront IP ranges
+    // Use AWS managed prefix list for CloudFront IP ranges (region-specific)
+    // us-west-2: pl-82a045eb
+    // us-east-1: pl-3b927c52
+    // eu-central-1: pl-a3a144ca
+    // ap-northeast-1: pl-58a04531
+    // ap-southeast-1: pl-31a34658
     albSecurityGroup.addIngressRule(
-      ec2.Peer.prefixList('pl-82a045eb'), // AWS managed CloudFront prefix list for us-west-2
+      ec2.Peer.prefixList('pl-82a045eb'), // us-west-2 AWS managed CloudFront prefix list
       ec2.Port.tcp(80),
       'Allow CloudFront HTTP traffic'
     );
