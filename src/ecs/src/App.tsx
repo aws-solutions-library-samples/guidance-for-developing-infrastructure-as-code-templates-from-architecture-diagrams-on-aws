@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import './App.css';
 import "@cloudscape-design/global-styles/index.css"
 import {
@@ -29,6 +29,58 @@ function App() {
     const [language, setLanguage] = useState<OptionDefinition | null>(null)
     const [fileName, setFilename] = useState<string | undefined>()
     const [flashbarItems, setFlashbarItems] = useState<FlashbarProps.MessageDefinition[]>([])
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+
+    useEffect(() => {
+        console.log('App useEffect running');
+        // Check for tokens in URL hash (implicit flow)
+        const hash = window.location.hash.substring(1);
+        console.log('URL hash:', hash);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const idToken = params.get('id_token');
+        console.log('Tokens found:', { accessToken: !!accessToken, idToken: !!idToken });
+        
+        if (accessToken && idToken) {
+            console.log('Storing tokens and setting authenticated');
+            localStorage.setItem('access_token', accessToken);
+            localStorage.setItem('id_token', idToken);
+            setIsAuthenticated(true);
+            // Clean up URL hash
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+            // Check for existing tokens in localStorage
+            const storedAccessToken = localStorage.getItem('access_token');
+            const storedIdToken = localStorage.getItem('id_token');
+            console.log('Stored tokens found:', { storedAccessToken: !!storedAccessToken, storedIdToken: !!storedIdToken });
+            if (storedAccessToken && storedIdToken) {
+                setIsAuthenticated(true);
+            }
+        }
+        console.log('Setting loading to false');
+        setIsLoading(false);
+    }, []);
+
+    console.log('App render - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
+
+    // Show loading state while checking authentication
+    if (isLoading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <div>Loading...</div>
+            </div>
+        );
+    }
+
+    // If not authenticated, show login message (shouldn't happen with Lambda@Edge)
+    if (!isAuthenticated) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <div>Please log in to access the application.</div>
+            </div>
+        );
+    }
 
     async function onSubmit() {
         try {
@@ -111,6 +163,7 @@ function App() {
         </SpaceBetween> ;
 
 
+    // Main application UI for authenticated users
     return (
         <AppLayoutToolbar
             breadcrumbs={

@@ -1,0 +1,7 @@
+{
+  "name": "edge-lambda",
+  "version": "1.0.0",
+  "dependencies": {
+    "cognito-at-edge": "1.5.3"
+  }
+}

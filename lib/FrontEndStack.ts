@@ -187,9 +187,20 @@ export class FrontEndStack extends cdk.Stack {
         }],
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
-        compress: false,
+        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN,
+        compress: true,
+      },
+      additionalBehaviors: {
+        '/static/*': {
+          origin: new origins.LoadBalancerV2Origin(this.service.loadBalancer, {
+            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY
+          }),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN,
+          compress: true,
+        }
       },
       errorResponses: [
         {
@@ -240,7 +251,11 @@ export class FrontEndStack extends cdk.Stack {
           cognito.OAuthScope.OPENID,
           cognito.OAuthScope.PROFILE,
         ],
-        callbackUrls: [`https://${this.cloudFrontDistribution.distributionDomainName}`],
+        callbackUrls: [
+          `https://${this.cloudFrontDistribution.distributionDomainName}`,
+          `https://${this.cloudFrontDistribution.distributionDomainName}/`
+        ],
+        logoutUrls: [`https://${this.cloudFrontDistribution.distributionDomainName}`]
       },
     });
     this.userPoolDomain = this.userPool.addDomain('UserPoolDomain', {
@@ -250,12 +265,15 @@ export class FrontEndStack extends cdk.Stack {
     });
     // Save Cognito settings as Secrets for access by Lambda@Edge/CloudFront auth Lambda
     new secretsmanager.Secret(this, 'CognitoClientSecrets', {
-      secretName: "cognitoClientSecrets-frontend", // must be unique, region-specific
+      secretName: "cognitoClientSecrets-frontend",
       secretObjectValue: {
         Region: cdk.SecretValue.unsafePlainText(this.region),
         UserPoolID: cdk.SecretValue.unsafePlainText(this.userPool.userPoolId),
         UserPoolAppId: cdk.SecretValue.unsafePlainText(this.userPoolClient.userPoolClientId),
         DomainName: cdk.SecretValue.unsafePlainText(`${this.userPoolDomain.domainName}.auth.${this.region}.amazoncognito.com`),
+        RedirectPathSignIn: cdk.SecretValue.unsafePlainText('/'),
+        RedirectPathSignOut: cdk.SecretValue.unsafePlainText('/'),
+        RedirectPathAuthRefresh: cdk.SecretValue.unsafePlainText('/'),
       }
     });
 
