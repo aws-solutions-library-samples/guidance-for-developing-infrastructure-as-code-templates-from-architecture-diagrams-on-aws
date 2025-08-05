@@ -5,7 +5,6 @@
 
 /**
  * Lambda@Edge handler that passes through all requests.
- * This is a simplified version to avoid authentication issues.
  */
 exports.handler = async (event) => {
   try {
