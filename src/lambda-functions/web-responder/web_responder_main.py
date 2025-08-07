@@ -4,31 +4,38 @@ import json
 import os
 import time
 from typing import TYPE_CHECKING, TypedDict, Dict, List
+from datetime import datetime
+import yaml
 
 import boto3
 import botocore
 from botocore.exceptions import ClientError
 
 if TYPE_CHECKING:
-    from aws_lambda_typing.events import APIGatewayProxyEventV2
     from types_boto3_stepfunctions import SFNClient
     from types_boto3_s3 import S3Client
     from types_boto3_bedrock_runtime import BedrockRuntimeClient
 
-modelID = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
-prompt = 'You are an expert AWS solutions architect and cloud infrastructure specialist with deep knowledge of AWS services, best practices, and the AWS Cloud Development Kit (CDK). Your task is to analyze the attached AWS architecture diagram and provide detailed, structured descriptions that can be used by other AI systems to generate deployable AWS CDK code.You have the following capabilities and traits:1.AWS Expertise: You have comprehensive knowledge of all AWS services, their configurations, and how they interact within complex architectures.2.Diagram Analysis: You can quickly interpret and understand AWS architecture diagrams, identifying all components and their relationships.3.Detail-Oriented: You provide thorough, specific descriptions of each component, including resource names, settings, and configuration details crucial for CDK implementation.4.Best Practices: You understand and can explain AWS best practices for security, scalability, and cost optimization.5.CDK-Focused: Your descriptions are structured in a way that aligns with AWS CDK constructs and patterns, facilitating easy code generation.6.Clear Communication: You explain complex architectures in a clear, logical manner that both humans and AI systems can understand and act upon.7.Holistic Understanding: You grasp not just individual components, but also the overall system purpose, data flow, and integration points. Your goal is to create a description that serves as a comprehensive blueprint for CDK code generation.What use case it is trying to address? Evaluate the complexity level of this architecture as level 1 or level 2 or level 3 based on the definitions described here: Level 1 : less than or equals to 4 different types of AWS services are used in the architecture diagram. Level 2 : 5 to 10 different types of AWS services are used in the architecture diagram. Level 3 : more than 10 different types of AWS services are used in the architecture diagram.At the end of your response include a numbered list of AWS resources along with their counts and names. For example, say  Resources summary: 1. ’N’ s3 buckets A, , B , C 2. ’N’ lambda functions A B  etc. and so on for all services present in the architecture diagram'
+
+with open('web-responder_config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
+    model_id = config['model_id']
+    prompt=config['prompt']
+    
+
 
 stepfunctions: 'SFNClient' = boto3.client('stepfunctions')
 s3_client: 'S3Client' = boto3.client('s3')
 bedrock_client: 'BedrockRuntimeClient' = boto3.client(service_name="bedrock-runtime", region_name=os.environ["REGION"])
 
-step_function_arn = f'arn:aws:states:{os.environ["REGION"]}:{os.environ["ACCOUNT_ID"]}:stateMachine:{os.environ["CDK_QUALIFIER"]}-Processing'
-s3_image_bucket = f''
 
+s3_image_bucket = f'{os.environ["ACCOUNT_ID"]}-a2c-diagramstorage-{os.environ["REGION"]}'
+s3_prefix = datetime.now().strftime('%Y/%m/%d/')
 
 class AnalysisRequest(TypedDict):
     image_data: str
-    image_filename: str
+    mime: str
+    language: str
 
 
 class AnalysisResponse(TypedDict):
@@ -54,51 +61,104 @@ class LambdaResponse(TypedDict):
     body: str
     headers: Dict[str, str]
 
+# Expecting invocation from ALB
 
-# Expecting https://docs.aws.amazon.com/lambda/latest/dg/urls-invocation.html
-def lambda_handler(event: 'APIGatewayProxyEventV2', context) -> 'LambdaResponse':
+def lambda_handler(event, context) -> 'LambdaResponse':
     """
-    1. Receive s3 uri from event notifications
+    1. Receive encoded image data from ALB
     2. Invoke do it all function
     3. Return result to web app
+    4. Store the Image to a S3 bucket.
 
     """
 
-        # Initialize the AWS Step Functions client
+    # Handle CORS preflight requests
+    if event.get('httpMethod') == 'OPTIONS' or event.get('requestContext', {}).get('http', {}).get('method') == 'OPTIONS':
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
+                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                'Access-Control-Max-Age': '86400'
+            },
+            'body': '',
+            'isBase64Encoded': False
+        }
+
+    # Initialize the AWS Step Functions client
     print("Event: ", event)
 
     analysis_request: AnalysisRequest = json.loads(event["body"])
 
-    mime = "image/png"  # TODO: Detect
+    mime = "image/png"  
+    
+    image_data = analysis_request.get('imageData')
+    print("IMAGE DATA" , image_data)
+    mime = analysis_request.get('mime')
+    language = analysis_request.get('language')
 
-    img_bytes = io.BytesIO(base64.b64decode(analysis_request["image_data"]))
+    # Construct a file name variable with the following format: a2c-drawing-TIMESTAMP
+    fileName = f"a2c-drawing-{int(time.time())}.png"
+    img_bytes = io.BytesIO(base64.b64decode(image_data))
     s3_client.upload_fileobj(img_bytes,
-                             s3_image_bucket,
-                             analysis_request["image_filename"],
-                             ExtraArgs={"ContentType": mime}
-                             )
+                            s3_image_bucket, 
+                            s3_prefix + fileName,
+                            ExtraArgs={"ContentType": mime}
+                            )
 
     # Process the S3 URI using the imported function
-    result: AnalysisResponse = web_responder_do_it_all(analysis_request["image_data"], mime)
+    result: AnalysisResponse = web_responder_do_it_all(image_data, mime)
 
-    # Replace with your actual Step Function ARN
+    # Construct Step Fucntion ARN
+    step_function_arn = f'arn:aws:states:{os.environ["REGION"]}:{os.environ["ACCOUNT_ID"]}:stateMachine:{os.environ["CDK_QUALIFIER"]}-Processing'
 
     # Invoke the Step Function
     response = stepfunctions.start_execution(
         stateMachineArn=step_function_arn,
-        input=json.dumps(event)  # Pass the entire event as input
+        input=json.dumps({
+            #"s3_uri": f"s3://{s3_image_bucket}/{s3_prefix}{analysis_request['image_filename']}",
+            "file_path": f"s3://{s3_image_bucket}/{s3_prefix}{fileName}",
+            "code_language": language
+        })
     )
 
-    print(response)
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps(result),
-        "headers": {
-            "Content-Type": "application/text",
+    print("STEP FUNCTION RESPONSE" , response)
+    
+    
+    print("MESSAGE TO UI" )
+    message_to_ui ={
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',  # For CORS support
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET', # Allowed HTTP methods
+                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token' # Allowed headers
+            },
+            'body': json.dumps({
+                'message': 'Success',
+                'result': result
+            }),
+            'isBase64Encoded': False 
         }
-    }
 
+    try:
+        return message_to_ui
+    except Exception as e:
+        return {
+            'statusCode': 500, 
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
+                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'
+            },
+            'body': json.dumps({
+                'message': 'Error processing request',
+                'error': str(e)
+            }),
+            'isBase64Encoded': False
+        }
 
 def invoke_claude_3_multimodal(prompt: str, base64_image_data: str, mime_type_image: str,
                                model_id: str) -> ClaudeResponse:
@@ -173,7 +233,7 @@ def web_responder_do_it_all(image_data_base64: str, image_mime: str) -> Analysis
 
     start_time = time.time()
     # Step 3: Get Claude Response
-    claude_response: ClaudeResponse = invoke_claude_3_multimodal(prompt, image_data_base64, image_mime, modelID)
+    claude_response: ClaudeResponse = invoke_claude_3_multimodal(prompt, image_data_base64, image_mime, model_id)
     execution_time = time.time() - start_time
 
     return {

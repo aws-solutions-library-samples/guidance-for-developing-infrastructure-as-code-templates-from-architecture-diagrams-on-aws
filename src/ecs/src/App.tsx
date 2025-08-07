@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import './App.css';
 import "@cloudscape-design/global-styles/index.css"
 import {
@@ -29,32 +29,85 @@ function App() {
     const [language, setLanguage] = useState<OptionDefinition | null>(null)
     const [fileName, setFilename] = useState<string | undefined>()
     const [flashbarItems, setFlashbarItems] = useState<FlashbarProps.MessageDefinition[]>([])
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+
+    useEffect(() => {
+        console.log('App useEffect running');
+        // Check for tokens in URL hash (implicit flow)
+        const hash = window.location.hash.substring(1);
+        console.log('URL hash:', hash);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const idToken = params.get('id_token');
+        console.log('Tokens found:', { accessToken: !!accessToken, idToken: !!idToken });
+        
+        if (accessToken && idToken) {
+            console.log('Storing tokens and setting authenticated');
+            localStorage.setItem('access_token', accessToken);
+            localStorage.setItem('id_token', idToken);
+            setIsAuthenticated(true);
+            // Clean up URL hash
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+            // Check for existing tokens in localStorage
+            const storedAccessToken = localStorage.getItem('access_token');
+            const storedIdToken = localStorage.getItem('id_token');
+            console.log('Stored tokens found:', { storedAccessToken: !!storedAccessToken, storedIdToken: !!storedIdToken });
+            if (storedAccessToken && storedIdToken) {
+                setIsAuthenticated(true);
+            }
+        }
+        console.log('Setting loading to false');
+        setIsLoading(false);
+    }, []);
+
+    console.log('App render - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
+
+    // Show loading state while checking authentication
+    if (isLoading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <div>Loading...</div>
+            </div>
+        );
+    }
 
     async function onSubmit() {
         try {
             const start = new Date().getTime()
             setInProgress(true)
+             // Get the origin of the current window and construct the API URL
+            const origin = window.location.origin;
+            
+            console.log(origin)
+            const apiUrl = origin + "/api";
+            console.log("apiUrl")
+            console.log(apiUrl)
             const response = await fetch(
-                "https://izcu6zn4dk.execute-api.us-east-2.amazonaws.com",
+                apiUrl,
                 {
                     body: JSON.stringify({
                         imageData: imageData?.split(",")?.[1],
                         mime:  imageFile[0].type,
-                        language: language?.value
+                        language: language?.value,
                     }),
                     method: "POST",
                     credentials: "include",
                     headers: {
                         "Content-Type": "application/json",
-                        "Authorization": "TGIF20250425"
                     },
                 }
             );
 
-            let r = await response.json() as Array<{ text: string }>;
             const end = new Date().getTime()
             console.log(end - start)
-            setResponse(r?.map(x => x.text)?.join("\n"))
+            //setResponse(r?.map(x => x.text)?.join("\n"))
+
+            let r = await response.json() as any;
+            console.log("Response structure:", JSON.stringify(r, null, 2));
+            setResponse(r?.result?.response_text?.map((x: { text: string }) => x.text)?.join("\n"));
+
 
             setFlashbarItems([{
                 type: "success",
@@ -101,6 +154,7 @@ function App() {
         </SpaceBetween> ;
 
 
+    // Main application UI for authenticated users
     return (
         <AppLayoutToolbar
             breadcrumbs={
@@ -162,7 +216,7 @@ function App() {
                         </SpaceBetween>
                     </Container>
                     <Container>
-                        <div>Architecture analysis and code will appear here after processing</div>
+                        <div>Architecture analysis will appear here after processing</div>
                         <Markdown>
                             {response}
                         </Markdown>
@@ -174,3 +228,4 @@ function App() {
 }
 
 export default App;
+         

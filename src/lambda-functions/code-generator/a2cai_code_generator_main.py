@@ -84,24 +84,4 @@ def lambda_handler(event, context):
     loop = asyncio.get_event_loop()
     result = loop.run_until_complete(async_lambda_handler(event, context))
     
-    client = boto3.client('ses')
-
-    client.send_email(
-        Destination={
-            'ToAddresses': [event['user_email']]
-        },
-        Message={
-            'Body': {
-                'Text': {
-                    'Charset': 'UTF-8',
-                    'Data': f"Your CDK code is ready. Please use this link to download the files. The link will be vaild for 48 hours.\n\n{result['presigned_url']}",
-                }
-            },
-            'Subject': {
-                'Charset': 'UTF-8',
-                'Data': 'Your CDK Code is Ready',
-            },
-        },
-        Source='Architec2Code@architec2code.com'
-    )
     return result
