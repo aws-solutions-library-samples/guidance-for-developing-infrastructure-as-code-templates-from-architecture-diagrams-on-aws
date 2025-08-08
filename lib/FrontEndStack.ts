@@ -167,7 +167,7 @@ export class FrontEndStack extends cdk.Stack {
     const viewerRequestEdgeLambda = new cloudfront.experimental.EdgeFunction(this, "CloudFrontAuthEdge", {
       code: lambda.Code.fromAsset(path.join(__dirname, '../src/lambda-functions/edge-lambda')),
       handler: "index.handler",
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       functionName: `${props.applicationQualifier}-cloudfront-auth`,
       description: "CloudFront Lambda@Edge for Cognito authentication",
       initialPolicy: [
@@ -175,7 +175,10 @@ export class FrontEndStack extends cdk.Stack {
               sid: "Secrets",
               effect: iam.Effect.ALLOW,
               actions: ["secretsmanager:GetSecretValue"],
-              resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:cognitoClientSecrets-frontend*`]
+              resources: [
+                `arn:aws:secretsmanager:us-east-1:${this.account}:secret:cognitoClientSecrets-frontend*`,
+                `arn:aws:secretsmanager:${this.region}:${this.account}:secret:cognitoClientSecrets-frontend*`
+              ]
           })
       ]
     });
@@ -258,14 +261,21 @@ export class FrontEndStack extends cdk.Stack {
       }
     });
     // Save Cognito settings as Secrets for access by Lambda@Edge/CloudFront auth Lambda
-    new secretsmanager.Secret(this, 'CognitoClientSecrets', {
+    const cognitoSecret = new secretsmanager.Secret(this, 'CognitoClientSecrets', {
       secretName: "cognitoClientSecrets-frontend",
       secretObjectValue: {
         Region: cdk.SecretValue.unsafePlainText(this.region),
         UserPoolID: cdk.SecretValue.unsafePlainText(this.userPool.userPoolId),
         UserPoolAppId: cdk.SecretValue.unsafePlainText(this.userPoolClient.userPoolClientId),
         DomainName: cdk.SecretValue.unsafePlainText(`${this.userPoolDomain.domainName}.auth.${this.region}.amazoncognito.com`),
-      }
+      },
+      // Only replicate to us-east-1 if we're not already deploying there (Lambda@Edge requirement)
+      ...(this.region !== 'us-east-1' && {
+        replicaRegions: [{
+          region: 'us-east-1',
+          encryptionKey: undefined
+        }]
+      })
     });
 
     // ===== Output URLs and UserPool IDs =====
