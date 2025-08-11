@@ -187,7 +187,8 @@ export class FrontEndStack extends cdk.Stack {
     this.cloudFrontDistribution = new cloudfront.Distribution(this, "CloudFrontDistribution", {
       defaultBehavior: {
         origin: new origins.LoadBalancerV2Origin(this.service.loadBalancer, {
-          protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY
+          protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+          readTimeout: cdk.Duration.seconds(60)
         }),
         edgeLambdas: [{
           eventType: cloudfront.LambdaEdgeEventType.VIEWER_REQUEST,
