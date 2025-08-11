@@ -14,12 +14,37 @@ const { Authenticator } = require('cognito-at-edge');
  * 
  */
 exports.handler = async (request) => {
-  const secrets = await secretsManager.getSecrets();
-  const authenticator = new Authenticator({
-    region: secrets.Region, // user pool region
-    userPoolId: secrets.UserPoolID, // user pool ID
-    userPoolAppId: secrets.UserPoolAppId, // user pool app client ID
-    userPoolDomain: secrets.DomainName, // user pool domain
-  });
-  return authenticator.handle(request);
+  try {
+    console.log('Lambda@Edge handler started', JSON.stringify(request, null, 2));
+    
+    const secrets = await secretsManager.getSecrets();
+    console.log('Secrets retrieved successfully');
+    
+    const authenticator = new Authenticator({
+      region: secrets.Region, // user pool region
+      userPoolId: secrets.UserPoolID, // user pool ID
+      userPoolAppId: secrets.UserPoolAppId, // user pool app client ID
+      userPoolDomain: secrets.DomainName, // user pool domain
+    });
+    
+    console.log('Authenticator created, handling request');
+    const result = await authenticator.handle(request);
+    console.log('Authentication result:', JSON.stringify(result, null, 2));
+    
+    return result;
+  } catch (error) {
+    console.error('Lambda@Edge error:', error);
+    // Return a proper CloudFront response for errors
+    return {
+      status: '500',
+      statusDescription: 'Internal Server Error',
+      headers: {
+        'content-type': [{
+          key: 'Content-Type',
+          value: 'text/html'
+        }]
+      },
+      body: '<html><body><h1>Authentication Error</h1><p>Please try again later.</p></body></html>'
+    };
+  }
 };
