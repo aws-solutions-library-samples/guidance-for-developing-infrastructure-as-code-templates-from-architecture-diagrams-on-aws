@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import "@cloudscape-design/global-styles/index.css"
 import {
@@ -18,7 +18,7 @@ import {
     SpaceBetween
 } from "@cloudscape-design/components";
 import Markdown from "react-markdown";
-import {OptionDefinition} from "@cloudscape-design/components/internal/components/option/interfaces";
+import { OptionDefinition } from "@cloudscape-design/components/internal/components/option/interfaces";
 
 
 function App() {
@@ -41,7 +41,7 @@ function App() {
         const accessToken = params.get('access_token');
         const idToken = params.get('id_token');
         console.log('Tokens found:', { accessToken: !!accessToken, idToken: !!idToken });
-        
+
         if (accessToken && idToken) {
             console.log('Storing tokens and setting authenticated');
             localStorage.setItem('access_token', accessToken);
@@ -75,22 +75,22 @@ function App() {
 
     async function onSubmit() {
         if (!imageData) return;
-        
+
         try {
             const start = new Date().getTime()
             setInProgress(true)
             setPerplexityResponse('')
-            
-            // Call web responder lambda (keep existing functionality)
+
+            // Call web responder lambda
             const origin = window.location.origin;
             const apiUrl = origin + "/api";
-            
+
             const lambdaPromise = fetch(
                 apiUrl,
                 {
                     body: JSON.stringify({
                         imageData: imageData?.split(",")?.[1],
-                        mime:  imageFile[0].type,
+                        mime: imageFile[0].type,
                         language: language?.value,
                     }),
                     method: "POST",
@@ -100,10 +100,10 @@ function App() {
                     },
                 }
             );
-            
+
             // Call Perplexity API for streaming response
             const PERPLEXITY_API_KEY = process.env.REACT_APP_PERPLEXITY_API_KEY;
-            
+
             const perplexityPromise = fetch('https://api.perplexity.ai/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -125,28 +125,28 @@ function App() {
                     ]
                 })
             });
-            
+
             // Process Perplexity streaming response
             const perplexityResponse = await perplexityPromise;
             if (perplexityResponse.ok) {
                 const reader = perplexityResponse.body?.getReader();
                 const decoder = new TextDecoder();
                 let buffer = '';
-                
+
                 if (reader) {
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
-                        
+
                         buffer += decoder.decode(value, { stream: true });
                         const lines = buffer.split('\n');
                         buffer = lines.pop() || '';
-                        
+
                         for (const line of lines) {
                             if (line.startsWith('data: ')) {
                                 const data = line.slice(6).trim();
                                 if (data === '[DONE]') break;
-                                
+
                                 try {
                                     const parsed = JSON.parse(data);
                                     const content = parsed?.choices?.[0]?.delta?.content;
@@ -161,19 +161,20 @@ function App() {
                     }
                 }
             }
-            
+
             // Wait for lambda response (but don't display it)
             await lambdaPromise;
-            
+
             const end = new Date().getTime()
             setFlashbarItems([{
                 type: "success",
                 content: `Analysis completed in ${(end - start) / 1000} seconds`,
-                dismissible: true
+                dismissible: true,
+                onDismiss: () => setFlashbarItems([])
             }])
         } catch (e) {
             console.error(e);
-            setFlashbarItems([{type: "error", content: "Error analyzing architecture", dismissible: true}])
+            setFlashbarItems([{ type: "error", content: "Error analyzing architecture", dismissible: true, onDismiss: () => setFlashbarItems([]) }])
         } finally {
             setInProgress(false)
         }
@@ -197,18 +198,18 @@ function App() {
         };
         const data = await value[0].arrayBuffer();
 
-        reader.readAsDataURL(new Blob([data], {type: value[0].type}))
+        reader.readAsDataURL(new Blob([data], { type: value[0].type }))
         setFilename(value[0].name)
     }
 
-    const imgSpot =<SpaceBetween size={"l"}>
-            {imageData?.length ? <img src={imageData} width={"100%"} alt={fileName}/> : "Drag and drop or select a file to upload"}
-                <FileUpload onChange={x => onFileSelect(x.detail.value)}
-                        value={imageFile}
-                        i18nStrings={{uploadButtonText: e => "Select Image"}}
-                        multiple={false}
-                        accept={"image/*"}/>
-        </SpaceBetween> ;
+    const imgSpot = <SpaceBetween size={"l"}>
+        {imageData?.length ? <img src={imageData} width={"100%"} alt={fileName} /> : "Drag and drop or select a file to upload"}
+        <FileUpload onChange={x => onFileSelect(x.detail.value)}
+            value={imageFile}
+            i18nStrings={{ uploadButtonText: e => "Select Image" }}
+            multiple={false}
+            accept={"image/*"} />
+    </SpaceBetween>;
 
 
     // Main application UI for authenticated users
@@ -217,8 +218,8 @@ function App() {
             breadcrumbs={
                 <BreadcrumbGroup
                     items={[
-                        {text: 'Home', href: '#'},
-                        {text: 'Service', href: '#'},
+                        { text: 'Home', href: '#' },
+                        { text: 'Service', href: '#' },
                     ]}
                 />
             }
@@ -231,13 +232,13 @@ function App() {
                         text: 'Architec2App AI',
                     }}
                     items={[
-                        {type: 'link', text: `Home`, href: `#`},
-                        {type: 'link', text: `How To use`, href: `#`},
+                        { type: 'link', text: `Home`, href: `#` },
+                        { type: 'link', text: `How To use`, href: `#` },
                     ]}
                 />
             }
             notifications={
-                <Flashbar items={flashbarItems}/>
+                <Flashbar items={flashbarItems} />
             }
             toolsOpen={false}
             tools={<HelpPanel header={<h2>Overview</h2>}>Help content</HelpPanel>}
@@ -252,21 +253,21 @@ function App() {
                             </FormField>
                             <FormField description={"Select your code output language"} stretch={true}>
                                 <Select selectedOption={language}
-                                        options={[{label: "Python", value: "python"}, {
-                                            value: "typescript",
-                                            label: "Typescript"
-                                        }]}
-                                        onChange={x => setLanguage(x.detail.selectedOption)}
-                                        placeholder={"Select a language"}
+                                    options={[{ label: "Python", value: "python" }, {
+                                        value: "typescript",
+                                        label: "Typescript"
+                                    }]}
+                                    onChange={x => setLanguage(x.detail.selectedOption)}
+                                    placeholder={"Select a language"}
                                 />
                             </FormField>
                             <FormField>
                                 <Button variant={"primary"}
-                                        disabled={!imageData?.length || !language}
-                                        disabledReason={"Please select image and language"}
-                                        onClick={x => onSubmit()}
-                                        loading={inProgress}
-                                        loadingText={"Analyzing"}>
+                                    disabled={!imageData?.length || !language}
+                                    disabledReason={"Please select image and language"}
+                                    onClick={x => onSubmit()}
+                                    loading={inProgress}
+                                    loadingText={"Analyzing"}>
                                     {inProgress ? "Analyzing..." : "Analyze"}
                                 </Button>
                             </FormField>
