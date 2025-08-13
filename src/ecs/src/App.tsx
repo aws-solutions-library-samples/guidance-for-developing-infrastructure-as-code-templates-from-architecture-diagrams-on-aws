@@ -22,10 +22,8 @@ import {OptionDefinition} from "@cloudscape-design/components/internal/component
 
 
 function App() {
-    const [response, setResponse] = useState<string | undefined>(undefined)
     const [perplexityResponse, setPerplexityResponse] = useState<string>('')
     const [inProgress, setInProgress] = useState(false)
-    const [perplexityInProgress, setPerplexityInProgress] = useState(false)
     const [imageData, setImageData] = useState<string | undefined>()
     const [imageFile, setImageFile] = useState<File[]>([])
     const [language, setLanguage] = useState<OptionDefinition | null>(null)
@@ -76,17 +74,18 @@ function App() {
     }
 
     async function onSubmit() {
+        if (!imageData) return;
+        
         try {
             const start = new Date().getTime()
             setInProgress(true)
-             // Get the origin of the current window and construct the API URL
-            const origin = window.location.origin;
+            setPerplexityResponse('')
             
-            console.log(origin)
+            // Call web responder lambda (keep existing functionality)
+            const origin = window.location.origin;
             const apiUrl = origin + "/api";
-            console.log("apiUrl")
-            console.log(apiUrl)
-            const response = await fetch(
+            
+            const lambdaPromise = fetch(
                 apiUrl,
                 {
                     body: JSON.stringify({
@@ -101,16 +100,72 @@ function App() {
                     },
                 }
             );
-
+            
+            // Call Perplexity API for streaming response
+            const PERPLEXITY_API_KEY = process.env.REACT_APP_PERPLEXITY_API_KEY;
+            
+            const perplexityPromise = fetch('https://api.perplexity.ai/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream'
+                },
+                body: JSON.stringify({
+                    model: "sonar-pro",
+                    stream: true,
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                { type: "text", text: "You are an expert AWS solutions architect and cloud infrastructure specialist with deep knowledge of AWS services, best practices, and the AWS Cloud Development Kit (CDK). Your task is to analyze the attached AWS architecture diagram and provide detailed, structured descriptions that can be used by other AI systems to generate deployable AWS CDK code.You have the following capabilities and traits:1.AWS Expertise: You have comprehensive knowledge of all AWS services, their configurations, and how they interact within complex architectures.2.Diagram Analysis: You can quickly interpret and understand AWS architecture diagrams, identifying all components and their relationships.3.Detail-Oriented: You provide thorough, specific descriptions of each component, including resource names, settings, and configuration details crucial for CDK implementation.4.Best Practices: You understand and can explain AWS best practices for security, scalability, and cost optimization.5.CDK-Focused: Your descriptions are structured in a way that aligns with AWS CDK constructs and patterns, facilitating easy code generation.6.Clear Communication: You explain complex architectures in a clear, logical manner that both humans and AI systems can understand and act upon.7.Holistic Understanding: You grasp not just individual components, but also the overall system purpose, data flow, and integration points. Your goal is to create a description that serves as a comprehensive blueprint for CDK code generation.What use case it is trying to address? Evaluate the complexity level of this architecture as level 1 or level 2 or level 3 based on the definitions described here: Level 1 : less than or equals to 4 different types of AWS services are used in the architecture diagram. Level 2 : 5 to 10 different types of AWS services are used in the architecture diagram. Level 3 : more than 10 different types of AWS services are used in the architecture diagram.At the end of your response include a numbered list of AWS resources along with their counts and names. For example, say  Resources summary: 1. 'N' s3 buckets A, , B , C 2. 'N' lambda functions A B  etc. and so on for all services present in the architecture diagram" },
+                                { type: "image_url", image_url: { url: imageData } }
+                            ]
+                        }
+                    ]
+                })
+            });
+            
+            // Process Perplexity streaming response
+            const perplexityResponse = await perplexityPromise;
+            if (perplexityResponse.ok) {
+                const reader = perplexityResponse.body?.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                if (reader) {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6).trim();
+                                if (data === '[DONE]') break;
+                                
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const content = parsed?.choices?.[0]?.delta?.content;
+                                    if (content) {
+                                        setPerplexityResponse(prev => prev + content);
+                                    }
+                                } catch (e) {
+                                    // Ignore parsing errors
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Wait for lambda response (but don't display it)
+            await lambdaPromise;
+            
             const end = new Date().getTime()
-            console.log(end - start)
-            //setResponse(r?.map(x => x.text)?.join("\n"))
-
-            let r = await response.json() as any;
-            console.log("Response structure:", JSON.stringify(r, null, 2));
-            setResponse(r?.result?.response_text?.map((x: { text: string }) => x.text)?.join("\n"));
-
-
             setFlashbarItems([{
                 type: "success",
                 content: `Analysis completed in ${(end - start) / 1000} seconds`,
@@ -122,92 +177,9 @@ function App() {
         } finally {
             setInProgress(false)
         }
-
-
     }
 
-    async function callPerplexityAPI() {
-        if (!imageData) return;
-        
-        // You'll need to set your Perplexity API key here
-        const PERPLEXITY_API_KEY = process.env.REACT_APP_PERPLEXITY_API_KEY || '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';
-        
-        if (!PERPLEXITY_API_KEY) {
-            setFlashbarItems([{type: "error", content: "Please set REACT_APP_PERPLEXITY_API_KEY environment variable", dismissible: true}]);
-            return;
-        }
-        
-        try {
-            setPerplexityInProgress(true);
-            setPerplexityResponse('');
-            
-            const payload = {
-                model: "sonar-pro",
-                stream: true,
-                messages: [
-                    {
-                        role: "user",
-                        content: [
-                            { type: "text", text: "Please analyze the content of this architecture diagram." },
-                            { type: "image_url", image_url: { url: imageData } }
-                        ]
-                    }
-                ]
-            };
-            
-            const response = await fetch('https://api.perplexity.ai/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'text/event-stream'
-                },
-                body: JSON.stringify(payload)
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            
-            if (reader) {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || '';
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const data = line.slice(6).trim();
-                            if (data === '[DONE]') return;
-                            
-                            try {
-                                const parsed = JSON.parse(data);
-                                const content = parsed?.choices?.[0]?.delta?.content;
-                                if (content) {
-                                    setPerplexityResponse(prev => prev + content);
-                                }
-                            } catch (e) {
-                                // Ignore parsing errors
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Perplexity API error:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            setFlashbarItems([{type: "error", content: `Error calling Perplexity API: ${errorMessage}`, dismissible: true}]);
-        } finally {
-            setPerplexityInProgress(false);
-        }
-    }
+
 
     async function onFileSelect(value: File[]) {
         if (!value || value.length == 0) {
@@ -270,7 +242,7 @@ function App() {
             toolsOpen={false}
             tools={<HelpPanel header={<h2>Overview</h2>}>Help content</HelpPanel>}
             content={
-                <ColumnLayout columns={3}>
+                <ColumnLayout columns={2}>
                     <Container>
                         <SpaceBetween size={"l"}>
                             <FormField stretch={true}>
@@ -289,35 +261,19 @@ function App() {
                                 />
                             </FormField>
                             <FormField>
-                                <SpaceBetween size="s">
-                                    <Button variant={"primary"}
-                                            disabled={!imageData?.length || !language}
-                                            disabledReason={"Please select image and language"}
-                                            onClick={x => onSubmit()}
-                                            loading={inProgress}
-                                            loadingText={"Analyzing"}>
-                                        {inProgress ? "Analyzing..." : "Analyze"}
-                                    </Button>
-                                    <Button variant={"normal"}
-                                            disabled={!imageData?.length}
-                                            disabledReason={"Please select an image"}
-                                            onClick={callPerplexityAPI}
-                                            loading={perplexityInProgress}
-                                            loadingText={"Streaming"}>
-                                        {perplexityInProgress ? "Streaming..." : "Stream with Perplexity"}
-                                    </Button>
-                                </SpaceBetween>
+                                <Button variant={"primary"}
+                                        disabled={!imageData?.length || !language}
+                                        disabledReason={"Please select image and language"}
+                                        onClick={x => onSubmit()}
+                                        loading={inProgress}
+                                        loadingText={"Analyzing"}>
+                                    {inProgress ? "Analyzing..." : "Analyze"}
+                                </Button>
                             </FormField>
                         </SpaceBetween>
                     </Container>
                     <Container>
-                        <div>Architecture analysis will appear here after processing</div>
-                        <Markdown>
-                            {response}
-                        </Markdown>
-                    </Container>
-                    <Container>
-                        <div>Perplexity streaming response will appear here</div>
+                        {!perplexityResponse && <div>Architecture analysis will appear here after processing</div>}
                         <Markdown>
                             {perplexityResponse}
                         </Markdown>
