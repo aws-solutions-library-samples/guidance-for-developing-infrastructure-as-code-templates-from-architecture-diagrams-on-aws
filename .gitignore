@@ -23,6 +23,7 @@
 **/.idea
 cdk.out
 **/data/**.csv
+**/.kiro
 
 .env
 cdk.context.json
