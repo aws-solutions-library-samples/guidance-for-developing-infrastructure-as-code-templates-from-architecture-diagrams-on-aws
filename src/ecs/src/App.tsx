@@ -32,6 +32,9 @@ function App() {
     const [flashbarItems, setFlashbarItems] = useState<FlashbarProps.MessageDefinition[]>([])
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
+    const [isScanning, setIsScanning] = useState(false)
+    const [scanProgress, setScanProgress] = useState(0)
+    const [scanPhase, setScanPhase] = useState<'vertical' | 'horizontal'>('vertical')
 
     useEffect(() => {
         console.log('App useEffect running');
@@ -59,11 +62,8 @@ function App() {
                 setIsAuthenticated(true);
             }
         }
-        console.log('Setting loading to false');
         setIsLoading(false);
     }, []);
-
-    console.log('App render - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
 
     // Show loading state while checking authentication
     if (isLoading) {
@@ -82,6 +82,43 @@ function App() {
             setInProgress(true)
             setPerplexityResponse('')
             setCdkModulesResponse('')
+
+            // Start the scanning animation
+            setIsScanning(true)
+            setScanProgress(0)
+            setScanPhase('vertical')
+            
+            // Phase 1: Vertical scanning
+            await new Promise(resolve => {
+                const verticalInterval = setInterval(() => {
+                    setScanProgress(prev => {
+                        if (prev >= 100) {
+                            clearInterval(verticalInterval)
+                            resolve(void 0)
+                            return 100
+                        }
+                        return prev + 4
+                    })
+                }, 100)
+            })
+            
+            // Phase 2: Horizontal scanning
+            setScanProgress(0)
+            setScanPhase('horizontal')
+            
+            await new Promise(resolve => {
+                const horizontalInterval = setInterval(() => {
+                    setScanProgress(prev => {
+                        if (prev >= 100) {
+                            clearInterval(horizontalInterval)
+                            setIsScanning(false)
+                            resolve(void 0)
+                            return 100
+                        }
+                        return prev + 5
+                    })
+                }, 100)
+            })
 
             // Call web responder lambda
             const origin = window.location.origin;
@@ -273,12 +310,80 @@ function App() {
     }
 
     const imgSpot = <SpaceBetween size={"l"}>
-        {imageData?.length ? <img src={imageData} width={"100%"} alt={fileName} /> : "Drag and drop or select a file to upload"}
+        {imageData?.length ? (
+            <div style={{ position: 'relative', overflow: 'hidden' }}>
+                <img src={imageData} width={"100%"} alt={fileName} />
+                {isScanning && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        pointerEvents: 'none'
+                    }}>
+                        {scanPhase === 'vertical' && (
+                            <div style={{
+                                position: 'absolute',
+                                left: 0,
+                                right: 0,
+                                height: '4px',
+                                background: 'linear-gradient(to right, transparent, #3b82f6, transparent)',
+                                opacity: 0.8,
+                                top: `${scanProgress}%`,
+                                transition: 'top 0.08s linear',
+                                boxShadow: '0 0 20px rgba(59, 130, 246, 0.6)'
+                            }} />
+                        )}
+                        {scanPhase === 'horizontal' && (
+                            <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                bottom: 0,
+                                width: '4px',
+                                background: 'linear-gradient(to bottom, transparent, #22c55e, transparent)',
+                                opacity: 0.8,
+                                left: `${scanProgress}%`,
+                                transition: 'left 0.06s linear',
+                                boxShadow: '0 0 20px rgba(34, 197, 94, 0.6)'
+                            }} />
+                        )}
+                    </div>
+                )}
+            </div>
+        ) : "Drag and drop or select a file to upload"}
         <FileUpload onChange={x => onFileSelect(x.detail.value)}
             value={imageFile}
             i18nStrings={{ uploadButtonText: e => "Select Image" }}
             multiple={false}
             accept={"image/*"} />
+        {isScanning && (
+            <div style={{ marginTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                        {scanPhase === 'vertical' ? 'Analyzing components...' : 'Mapping connections...'}
+                    </span>
+                    <span style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '500', 
+                        color: scanPhase === 'vertical' ? '#2563eb' : '#16a34a' 
+                    }}>
+                        {Math.round(scanProgress)}%
+                    </span>
+                </div>
+                <div style={{ width: '100%', backgroundColor: '#e5e7eb', borderRadius: '9999px', height: '8px' }}>
+                    <div style={{
+                        height: '8px',
+                        borderRadius: '9999px',
+                        transition: 'width 0.1s linear',
+                        background: scanPhase === 'vertical' 
+                            ? 'linear-gradient(to right, #3b82f6, #8b5cf6)'
+                            : 'linear-gradient(to right, #22c55e, #10b981)',
+                        width: `${scanProgress}%`
+                    }} />
+                </div>
+            </div>
+        )}
     </SpaceBetween>;
 
 
@@ -334,12 +439,12 @@ function App() {
                                 </FormField>
                                 <FormField>
                                     <Button variant={"primary"}
-                                        disabled={!imageData?.length || !language}
+                                        disabled={!imageData?.length || !language || isScanning}
                                         disabledReason={"Please select image and language"}
                                         onClick={x => onSubmit()}
                                         loading={inProgress}
-                                        loadingText={"Analyzing"}>
-                                        {inProgress ? "Analyzing..." : "Analyze"}
+                                        loadingText={isScanning ? "Scanning..." : "Analyzing"}>
+                                        {isScanning ? "Scanning..." : inProgress ? "Analyzing..." : "Analyze"}
                                     </Button>
                                 </FormField>
                             </SpaceBetween>
