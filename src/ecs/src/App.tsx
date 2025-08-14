@@ -23,6 +23,7 @@ import { OptionDefinition } from "@cloudscape-design/components/internal/compone
 
 function App() {
     const [perplexityResponse, setPerplexityResponse] = useState<string>('')
+    const [cdkModulesResponse, setCdkModulesResponse] = useState<string>('')
     const [inProgress, setInProgress] = useState(false)
     const [imageData, setImageData] = useState<string | undefined>()
     const [imageFile, setImageFile] = useState<File[]>([])
@@ -80,6 +81,7 @@ function App() {
             const start = new Date().getTime()
             setInProgress(true)
             setPerplexityResponse('')
+            setCdkModulesResponse('')
 
             // Call web responder lambda
             const origin = window.location.origin;
@@ -134,7 +136,8 @@ function App() {
                 let buffer = '';
 
                 if (reader) {
-                    while (true) {
+                    let streamDone = false;
+                    while (!streamDone) {
                         const { done, value } = await reader.read();
                         if (done) break;
 
@@ -145,7 +148,10 @@ function App() {
                         for (const line of lines) {
                             if (line.startsWith('data: ')) {
                                 const data = line.slice(6).trim();
-                                if (data === '[DONE]') break;
+                                if (data === '[DONE]') {
+                                    streamDone = true;
+                                    break;
+                                }
 
                                 try {
                                     const parsed = JSON.parse(data);
@@ -164,6 +170,70 @@ function App() {
 
             // Wait for lambda response (but don't display it)
             await lambdaPromise;
+            
+            // Make second Perplexity API call for CDK modules breakdown
+            setCdkModulesResponse('');
+            const cdkModulesPromise = fetch('https://api.perplexity.ai/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream'
+                },
+                body: JSON.stringify({
+                    model: "sonar-pro",
+                    stream: true,
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                { type: "text", text: "Based on this AWS architecture diagram, list what AWS resources each module should contain if you were developing an AWS CDK project based upon it. Provide only the module names and associated resources." },
+                                { type: "image_url", image_url: { url: imageData } }
+                            ]
+                        }
+                    ]
+                })
+            });
+            
+            // Process CDK modules streaming response
+            const cdkModulesApiResponse = await cdkModulesPromise;
+            if (cdkModulesApiResponse.ok) {
+                const reader = cdkModulesApiResponse.body?.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                if (reader) {
+                    let streamDone = false;
+                    while (!streamDone) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6).trim();
+                                if (data === '[DONE]') {
+                                    streamDone = true;
+                                    break;
+                                }
+                                
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const content = parsed?.choices?.[0]?.delta?.content;
+                                    if (content) {
+                                        setCdkModulesResponse(prev => prev + content);
+                                    }
+                                } catch (e) {
+                                    // Ignore parsing errors
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             const end = new Date().getTime()
             setFlashbarItems([{
@@ -244,35 +314,45 @@ function App() {
             tools={<HelpPanel header={<h2>Overview</h2>}>Help content</HelpPanel>}
             content={
                 <ColumnLayout columns={2}>
-                    <Container>
-                        <SpaceBetween size={"l"}>
-                            <FormField stretch={true}>
-                                <FileDropzone onChange={x => onFileSelect(x.detail.value)}>
-                                    {imgSpot}
-                                </FileDropzone>
-                            </FormField>
-                            <FormField description={"Select your code output language"} stretch={true}>
-                                <Select selectedOption={language}
-                                    options={[{ label: "Python", value: "python" }, {
-                                        value: "typescript",
-                                        label: "Typescript"
-                                    }]}
-                                    onChange={x => setLanguage(x.detail.selectedOption)}
-                                    placeholder={"Select a language"}
-                                />
-                            </FormField>
-                            <FormField>
-                                <Button variant={"primary"}
-                                    disabled={!imageData?.length || !language}
-                                    disabledReason={"Please select image and language"}
-                                    onClick={x => onSubmit()}
-                                    loading={inProgress}
-                                    loadingText={"Analyzing"}>
-                                    {inProgress ? "Analyzing..." : "Analyze"}
-                                </Button>
-                            </FormField>
-                        </SpaceBetween>
-                    </Container>
+                    <SpaceBetween size={"l"}>
+                        <Container>
+                            <SpaceBetween size={"l"}>
+                                <FormField stretch={true}>
+                                    <FileDropzone onChange={x => onFileSelect(x.detail.value)}>
+                                        {imgSpot}
+                                    </FileDropzone>
+                                </FormField>
+                                <FormField description={"Select your code output language"} stretch={true}>
+                                    <Select selectedOption={language}
+                                        options={[{ label: "Python", value: "python" }, {
+                                            value: "typescript",
+                                            label: "Typescript"
+                                        }]}
+                                        onChange={x => setLanguage(x.detail.selectedOption)}
+                                        placeholder={"Select a language"}
+                                    />
+                                </FormField>
+                                <FormField>
+                                    <Button variant={"primary"}
+                                        disabled={!imageData?.length || !language}
+                                        disabledReason={"Please select image and language"}
+                                        onClick={x => onSubmit()}
+                                        loading={inProgress}
+                                        loadingText={"Analyzing"}>
+                                        {inProgress ? "Analyzing..." : "Analyze"}
+                                    </Button>
+                                </FormField>
+                            </SpaceBetween>
+                        </Container>
+                        {cdkModulesResponse && (
+                            <Container>
+                                <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>CDK Modules Breakdown</div>
+                                <Markdown>
+                                    {cdkModulesResponse}
+                                </Markdown>
+                            </Container>
+                        )}
+                    </SpaceBetween>
                     <Container>
                         {!perplexityResponse && <div>Architecture analysis will appear here after processing</div>}
                         <Markdown>
