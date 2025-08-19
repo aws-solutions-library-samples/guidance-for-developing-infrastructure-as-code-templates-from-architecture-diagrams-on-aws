@@ -2,7 +2,6 @@
 
 ## Table of Contents
 - [Overview](#overview)
-  - [Cost](#cost)
 - [Prerequisites](#prerequisites)
   - [Operating System](#operating-system)
 - [Deployment Steps](#deployment-steps)
@@ -30,7 +29,7 @@ Work In Progress
 ## Prerequisites
 
 ### Operating System
-- This Guidance can be deployed using Windows, MacOS, or Linux. 
+- Windows, MacOS, or Linux. 
 - An IDE, AWS CDK and AWS CLI are required.
 - NPM installed
 - Docker - IMPORTANT: In your Docker settings, verify that "Use containerd for pulling and storing images" is disabled. This setting causes issues with pushing Docker images to AWS ECR
@@ -119,10 +118,10 @@ cdk deploy --all --require-approval never
 > Allow 5–7 minutes after stack completion for ECS service initialization and container provisioning. The ALB health checks may take 2–3 minutes to show healthy status after tasks become active.
 
 
-## Running the Guidance
+## Running the Solution
 1. Navigate to the web page
-2. Upload a high quality PNG image of a AWS Architecture diagram for any Data Platform type architecture. These are generally derived from the AWS Modern Data Architecture Framework - reflecting capabilities for streaming, ETL, ingestion type architectures encompassing AWS Data, Analytics and Database services. A folder of architecture diagram samples has been provided in this repo.
-3. A2C AI will first analyse the drawing and provide a response to the answer with a description of what it sees, also initiating the workflow for code synthesis in parallel. 
+2. Upload a high quality PNG image of a AWS Architecture diagram for any AWS architecture
+3. A2A AI will first analyse the drawing and provide a response to the answer with a description of what it sees, also initiating the workflow for code synthesis in parallel. 
 4. Once the code synthesis is completed, the results will be uploaded to the code output S3 bucket under a folder named with the date and time of the event. If email addresses were added to the SNS topic, then a completion notification with a link to download the code from S3 will also be recieved.
 
 ## Next Steps
