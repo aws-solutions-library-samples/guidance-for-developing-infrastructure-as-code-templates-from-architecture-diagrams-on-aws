@@ -38,6 +38,7 @@ function App() {
     const [navigationOpen, setNavigationOpen] = useState(true)
     const [currentPage, setCurrentPage] = useState('home')
     const [optimizeInProgress, setOptimizeInProgress] = useState(false)
+    const [contentType, setContentType] = useState<'analysis' | 'optimization' | null>(null)
 
     useEffect(() => {
         console.log('App useEffect running');
@@ -85,6 +86,7 @@ function App() {
             setInProgress(true)
             setPerplexityResponse('')
             setCdkModulesResponse('')
+            setContentType('analysis')
 
             // Start the scanning animation
             setIsScanning(true)
@@ -302,6 +304,7 @@ function App() {
             const start = new Date().getTime()
             setOptimizeInProgress(true)
             setPerplexityResponse('')
+            setContentType('optimization')
 
             const PERPLEXITY_API_KEY = process.env.REACT_APP_PERPLEXITY_API_KEY;
 
@@ -591,6 +594,12 @@ function App() {
                             )}
                         </SpaceBetween>
                         <Container>
+                            {contentType === 'analysis' && perplexityResponse && (
+                                <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>Architecture Summary</div>
+                            )}
+                            {contentType === 'optimization' && perplexityResponse && (
+                                <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>Recommended Optimizations</div>
+                            )}
                             {!perplexityResponse && <div>Architecture analysis will appear here after processing</div>}
                             <Markdown>
                                 {perplexityResponse}
