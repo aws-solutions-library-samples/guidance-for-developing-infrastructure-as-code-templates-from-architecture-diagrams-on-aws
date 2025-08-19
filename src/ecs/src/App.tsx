@@ -37,6 +37,7 @@ function App() {
     const [scanPhase, setScanPhase] = useState<'vertical' | 'horizontal'>('vertical')
     const [navigationOpen, setNavigationOpen] = useState(true)
     const [currentPage, setCurrentPage] = useState('home')
+    const [optimizeInProgress, setOptimizeInProgress] = useState(false)
 
     useEffect(() => {
         console.log('App useEffect running');
@@ -294,7 +295,91 @@ function App() {
         }
     }
 
+    async function onOptimize() {
+        if (!imageData) return;
 
+        try {
+            const start = new Date().getTime()
+            setOptimizeInProgress(true)
+            setPerplexityResponse('')
+
+            const PERPLEXITY_API_KEY = process.env.REACT_APP_PERPLEXITY_API_KEY;
+
+            const optimizePromise = fetch('https://api.perplexity.ai/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream'
+                },
+                body: JSON.stringify({
+                    model: "sonar-pro",
+                    stream: true,
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                { type: "text", text: "You are an expert AWS solutions architect. Analyze this AWS architecture diagram and provide specific optimization recommendations focusing on: 1) Cost optimization opportunities, 2) Security improvements, 3) Performance enhancements, 4) Scalability improvements, 5) Reliability and availability enhancements. For each recommendation, explain the current limitation and the specific AWS service or configuration change that would address it. Provide reference links to official AWS documentation at the end if relevant." },
+                                { type: "image_url", image_url: { url: imageData } }
+                            ]
+                        }
+                    ]
+                })
+            });
+
+            const optimizeResponse = await optimizePromise;
+            if (optimizeResponse.ok) {
+                const reader = optimizeResponse.body?.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                if (reader) {
+                    let streamDone = false;
+                    while (!streamDone) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6).trim();
+                                if (data === '[DONE]') {
+                                    streamDone = true;
+                                    break;
+                                }
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const content = parsed?.choices?.[0]?.delta?.content;
+                                    if (content) {
+                                        setPerplexityResponse(prev => prev + content);
+                                    }
+                                } catch (e) {
+                                    // Ignore parsing errors
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            const end = new Date().getTime()
+            setFlashbarItems([{
+                type: "success",
+                content: `Optimization analysis completed in ${(end - start) / 1000} seconds`,
+                dismissible: true,
+                onDismiss: () => setFlashbarItems([])
+            }])
+        } catch (e) {
+            console.error(e);
+            setFlashbarItems([{ type: "error", content: "Error optimizing architecture", dismissible: true, onDismiss: () => setFlashbarItems([]) }])
+        } finally {
+            setOptimizeInProgress(false)
+        }
+    }
 
     async function onFileSelect(value: File[]) {
         if (!value || value.length == 0) {
@@ -396,7 +481,7 @@ function App() {
     const HowToUsePage = () => (
         <Container>
             <SpaceBetween size="l">
-                <div style={{ fontSize: '24px', fontWeight: 'bold' }}>How to Use Architec2Code AI</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold' }}>How to Use Architec2App AI</div>
                 <div>
                     <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>Step 1: Upload Architecture Diagram</div>
                     <div>Upload a high-quality PNG image of your AWS architecture diagram. The diagram should clearly show AWS services and their connections.</div>
@@ -475,14 +560,24 @@ function App() {
                                         />
                                     </FormField>
                                     <FormField>
-                                        <Button variant={"primary"}
-                                            disabled={!imageData?.length || !language || isScanning}
-                                            disabledReason={"Please select image and language"}
-                                            onClick={x => onSubmit()}
-                                            loading={inProgress}
-                                            loadingText={isScanning ? "Scanning..." : "Analyzing"}>
-                                            {isScanning ? "Scanning..." : inProgress ? "Analyzing..." : "Analyze"}
-                                        </Button>
+                                        <SpaceBetween direction="horizontal" size="s">
+                                            <Button variant={"primary"}
+                                                disabled={!imageData?.length || !language || isScanning}
+                                                disabledReason={"Please select image and language"}
+                                                onClick={x => onSubmit()}
+                                                loading={inProgress}
+                                                loadingText={isScanning ? "Scanning..." : "Analyzing"}>
+                                                {isScanning ? "Scanning..." : inProgress ? "Analyzing..." : "Analyze"}
+                                            </Button>
+                                            <Button variant={"normal"}
+                                                disabled={!imageData?.length || isScanning || inProgress}
+                                                disabledReason={"Please select image"}
+                                                onClick={x => onOptimize()}
+                                                loading={optimizeInProgress}
+                                                loadingText={"Optimizing"}>
+                                                {optimizeInProgress ? "Optimizing..." : "Optimize"}
+                                            </Button>
+                                        </SpaceBetween>
                                     </FormField>
                                 </SpaceBetween>
                             </Container>
