@@ -278,6 +278,11 @@ function App() {
                 content: `Analysis completed in ${(end - start) / 1000} seconds`,
                 dismissible: true,
                 onDismiss: () => setFlashbarItems([])
+            }, {
+                type: "info",
+                content: "Code synthesis initiated",
+                dismissible: true,
+                onDismiss: () => setFlashbarItems([])
             }])
         } catch (e) {
             console.error(e);
