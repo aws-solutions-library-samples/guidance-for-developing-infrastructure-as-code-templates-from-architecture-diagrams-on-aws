@@ -35,6 +35,8 @@ function App() {
     const [isScanning, setIsScanning] = useState(false)
     const [scanProgress, setScanProgress] = useState(0)
     const [scanPhase, setScanPhase] = useState<'vertical' | 'horizontal'>('vertical')
+    const [navigationOpen, setNavigationOpen] = useState(true)
+    const [currentPage, setCurrentPage] = useState('home')
 
     useEffect(() => {
         console.log('App useEffect running');
@@ -391,6 +393,29 @@ function App() {
         )}
     </SpaceBetween>;
 
+    const HowToUsePage = () => (
+        <Container>
+            <SpaceBetween size="l">
+                <div style={{ fontSize: '24px', fontWeight: 'bold' }}>How to Use Architec2Code AI</div>
+                <div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>Step 1: Upload Architecture Diagram</div>
+                    <div>Upload a high-quality PNG image of your AWS architecture diagram. The diagram should clearly show AWS services and their connections.</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>Step 2: Select Output Language</div>
+                    <div>Choose between Python or TypeScript for your generated AWS CDK code.</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>Step 3: Analyze</div>
+                    <div>Click the Analyze button to start the process. The AI will analyze your architecture and generate corresponding CDK code.</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>Step 4: Download Results</div>
+                    <div>Once processing is complete, you'll receive an email notification with a download link for your generated CDK code.</div>
+                </div>
+            </SpaceBetween>
+        </Container>
+    );
 
     // Main application UI for authenticated users
     return (
@@ -404,17 +429,23 @@ function App() {
                 />
             }
 
-            navigationOpen={true}
+            navigationOpen={navigationOpen}
+            onNavigationChange={({ detail }) => setNavigationOpen(detail.open)}
             navigation={
                 <SideNavigation
                     header={{
                         href: '#',
                         text: 'Architec2App AI',
                     }}
+                    activeHref={currentPage}
                     items={[
-                        { type: 'link', text: `Home`, href: `#` },
-                        { type: 'link', text: `How To use`, href: `#` },
+                        { type: 'link', text: `Home`, href: `home` },
+                        { type: 'link', text: `How To Use`, href: `howto` },
                     ]}
+                    onFollow={(event) => {
+                        event.preventDefault();
+                        setCurrentPage(event.detail.href);
+                    }}
                 />
             }
             notifications={
@@ -423,53 +454,55 @@ function App() {
             toolsOpen={false}
             tools={<HelpPanel header={<h2>Overview</h2>}>Help content</HelpPanel>}
             content={
-                <ColumnLayout columns={2}>
-                    <SpaceBetween size={"l"}>
-                        <Container>
-                            <SpaceBetween size={"l"}>
-                                <FormField stretch={true}>
-                                    <FileDropzone onChange={x => onFileSelect(x.detail.value)}>
-                                        {imgSpot}
-                                    </FileDropzone>
-                                </FormField>
-                                <FormField description={"Select your code output language"} stretch={true}>
-                                    <Select selectedOption={language}
-                                        options={[{ label: "Python", value: "python" }, {
-                                            value: "typescript",
-                                            label: "Typescript"
-                                        }]}
-                                        onChange={x => setLanguage(x.detail.selectedOption)}
-                                        placeholder={"Select a language"}
-                                    />
-                                </FormField>
-                                <FormField>
-                                    <Button variant={"primary"}
-                                        disabled={!imageData?.length || !language || isScanning}
-                                        disabledReason={"Please select image and language"}
-                                        onClick={x => onSubmit()}
-                                        loading={inProgress}
-                                        loadingText={isScanning ? "Scanning..." : "Analyzing"}>
-                                        {isScanning ? "Scanning..." : inProgress ? "Analyzing..." : "Analyze"}
-                                    </Button>
-                                </FormField>
-                            </SpaceBetween>
-                        </Container>
-                        {cdkModulesResponse && (
+                currentPage === 'howto' ? <HowToUsePage /> : (
+                    <ColumnLayout columns={2}>
+                        <SpaceBetween size={"l"}>
                             <Container>
-                                <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>CDK Modules Breakdown</div>
-                                <Markdown>
-                                    {cdkModulesResponse}
-                                </Markdown>
+                                <SpaceBetween size={"l"}>
+                                    <FormField stretch={true}>
+                                        <FileDropzone onChange={x => onFileSelect(x.detail.value)}>
+                                            {imgSpot}
+                                        </FileDropzone>
+                                    </FormField>
+                                    <FormField description={"Select your code output language"} stretch={true}>
+                                        <Select selectedOption={language}
+                                            options={[{ label: "Python", value: "python" }, {
+                                                value: "typescript",
+                                                label: "Typescript"
+                                            }]}
+                                            onChange={x => setLanguage(x.detail.selectedOption)}
+                                            placeholder={"Select a language"}
+                                        />
+                                    </FormField>
+                                    <FormField>
+                                        <Button variant={"primary"}
+                                            disabled={!imageData?.length || !language || isScanning}
+                                            disabledReason={"Please select image and language"}
+                                            onClick={x => onSubmit()}
+                                            loading={inProgress}
+                                            loadingText={isScanning ? "Scanning..." : "Analyzing"}>
+                                            {isScanning ? "Scanning..." : inProgress ? "Analyzing..." : "Analyze"}
+                                        </Button>
+                                    </FormField>
+                                </SpaceBetween>
                             </Container>
-                        )}
-                    </SpaceBetween>
-                    <Container>
-                        {!perplexityResponse && <div>Architecture analysis will appear here after processing</div>}
-                        <Markdown>
-                            {perplexityResponse}
-                        </Markdown>
-                    </Container>
-                </ColumnLayout>
+                            {cdkModulesResponse && (
+                                <Container>
+                                    <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>CDK Modules Breakdown</div>
+                                    <Markdown>
+                                        {cdkModulesResponse}
+                                    </Markdown>
+                                </Container>
+                            )}
+                        </SpaceBetween>
+                        <Container>
+                            {!perplexityResponse && <div>Architecture analysis will appear here after processing</div>}
+                            <Markdown>
+                                {perplexityResponse}
+                            </Markdown>
+                        </Container>
+                    </ColumnLayout>
+                )
             }
         />
     );
