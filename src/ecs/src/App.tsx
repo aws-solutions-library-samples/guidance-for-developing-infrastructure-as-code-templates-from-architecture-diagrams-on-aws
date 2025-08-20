@@ -495,7 +495,7 @@ function App() {
                 </div>
                 <div>
                     <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>Step 3: Analyze</div>
-                    <div>Click the Analyze button to start the process. The AI will analyze your architecture and generate corresponding CDK code.</div>
+                    <div>Click the Generate button to start the process. The AI will analyze your architecture and generate corresponding CDK code.</div>
                 </div>
                 <div>
                     <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>Step 4: Download Results</div>
@@ -569,10 +569,10 @@ function App() {
                                                 disabledReason={"Please select image and language"}
                                                 onClick={x => onSubmit()}
                                                 loading={inProgress}
-                                                loadingText={isScanning ? "Scanning..." : "Analyzing"}>
-                                                {isScanning ? "Scanning..." : inProgress ? "Analyzing..." : "Analyze"}
+                                                loadingText={isScanning ? "Scanning..." : "Generating"}>
+                                                {isScanning ? "Scanning..." : inProgress ? "Generating..." : "Generate"}
                                             </Button>
-                                            <Button variant={"normal"}
+                                            <Button variant={"primary"}
                                                 disabled={!imageData?.length || isScanning || inProgress}
                                                 disabledReason={"Please select image"}
                                                 onClick={x => onOptimize()}
