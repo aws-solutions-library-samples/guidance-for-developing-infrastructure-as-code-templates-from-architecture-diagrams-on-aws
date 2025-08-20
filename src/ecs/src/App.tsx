@@ -584,14 +584,15 @@ function App() {
                                     </FormField>
                                 </SpaceBetween>
                             </Container>
-                            {cdkModulesResponse && (
-                                <Container>
-                                    <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>CDK Modules Breakdown</div>
-                                    <Markdown>
-                                        {cdkModulesResponse}
-                                    </Markdown>
-                                </Container>
-                            )}
+                            <Container>
+                                {cdkModulesResponse && (
+                                    <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>CDK Modules Breakdown</div>
+                                )}
+                                {!cdkModulesResponse && <div>CDK modules breakdown will appear here after processing</div>}
+                                <Markdown>
+                                    {cdkModulesResponse}
+                                </Markdown>
+                            </Container>
                         </SpaceBetween>
                         <Container>
                             {contentType === 'analysis' && perplexityResponse && (
