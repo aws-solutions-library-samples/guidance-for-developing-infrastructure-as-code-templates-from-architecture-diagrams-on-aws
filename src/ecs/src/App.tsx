@@ -223,59 +223,44 @@ function App() {
                 }, 100)
             })
 
-            // Send analysis request via WebSocket with chunked data
+            // Upload image to S3 and send S3 key via WebSocket
             const base64Data = imageData?.split(",")?.[1];
-            const chunkSize = 20000; // 20KB chunks to stay under 32KB limit
+            const imageBlob = new Blob([Uint8Array.from(atob(base64Data!), c => c.charCodeAt(0))], { type: imageFile[0].type });
             
-            if (base64Data && base64Data.length > chunkSize) {
-                // Send in chunks
-                const chunks: string[] = [];
-                for (let i = 0; i < base64Data.length; i += chunkSize) {
-                    chunks.push(base64Data.slice(i, i + chunkSize));
-                }
-                
-                // Send start message
-                wsConnection.send(JSON.stringify({
-                    action: 'analyze_start',
-                    totalChunks: chunks.length,
-                    language: language?.value
-                }));
-                
-                // Send chunks sequentially with promises
-                const sendChunks = async () => {
-                    for (let i = 0; i < chunks.length; i++) {
-                        wsConnection.send(JSON.stringify({
-                            action: 'analyze_chunk',
-                            chunkIndex: i,
-                            chunkData: chunks[i]
-                        }));
-                        // Small delay between chunks
-                        await new Promise(resolve => setTimeout(resolve, 10));
-                    }
-                    
-                    // Send end message after all chunks are sent
-                    wsConnection.send(JSON.stringify({
-                        action: 'analyze_end'
-                    }));
-                };
-                
-                sendChunks().catch(console.error);
-            } else {
-                // Send as single message if small enough
-                wsConnection.send(JSON.stringify({
-                    action: 'analyze',
-                    imageData: base64Data,
-                    language: language?.value
-                }));
-            }
+            // Generate unique filename
+            const timestamp = Date.now();
+            const s3Key = `websocket-uploads/${timestamp}-${fileName}`;
+            
+            // Upload to S3 using presigned URL
+            const origin = window.location.origin;
+            const presignedResponse = await fetch(`${origin}/api/presigned-url`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: s3Key, contentType: imageFile[0].type })
+            });
+            
+            const { uploadUrl } = await presignedResponse.json();
+            
+            // Upload image to S3
+            await fetch(uploadUrl, {
+                method: 'PUT',
+                body: imageBlob,
+                headers: { 'Content-Type': imageFile[0].type }
+            });
+            
+            // Send S3 key via WebSocket for analysis
+            wsConnection.send(JSON.stringify({
+                action: 'analyze',
+                s3Key: s3Key,
+                language: language?.value
+            }));
 
             // Trigger Step Function for code generation (async)
-            const origin = window.location.origin;
             const apiUrl = origin + "/api";
             
             fetch(apiUrl, {
                 body: JSON.stringify({
-                    imageData: imageData?.split(",")?.[1],
+                    s3Key: s3Key,
                     mime: imageFile[0].type,
                     language: language?.value,
                 }),

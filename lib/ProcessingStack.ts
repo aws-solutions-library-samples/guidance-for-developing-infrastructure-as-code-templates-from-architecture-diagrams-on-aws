@@ -146,6 +146,7 @@ export class ProcessingStack extends cdk.Stack {
       environment: {
         CONNECTIONS_TABLE: this.connectionsTable.tableName,
         REGION: this.region,
+        ACCOUNT_ID: this.account,
       },
       initialPolicy: [
         new iam.PolicyStatement({
@@ -155,6 +156,13 @@ export class ProcessingStack extends cdk.Stack {
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue'],
           resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:A2C_API_KEY*`],
+        }),
+        new iam.PolicyStatement({
+          actions: ['s3:GetObject'],
+          resources: [
+            props.diagramStorageBucket.bucketArn,
+            `${props.diagramStorageBucket.bucketArn}/*`
+          ],
         }),
       ],
     });

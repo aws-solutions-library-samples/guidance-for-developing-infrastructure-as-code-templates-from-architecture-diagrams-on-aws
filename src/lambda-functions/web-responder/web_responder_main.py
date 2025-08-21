@@ -33,7 +33,7 @@ s3_image_bucket = f'{os.environ["ACCOUNT_ID"]}-a2c-diagramstorage-{os.environ["R
 s3_prefix = datetime.now().strftime('%Y/%m/%d/')
 
 class AnalysisRequest(TypedDict):
-    image_data: str
+    s3Key: str
     mime: str
     language: str
 
@@ -88,26 +88,81 @@ def lambda_handler(event, context) -> 'LambdaResponse':
 
     # Initialize the AWS Step Functions client
     print("Event: ", event)
-
-    analysis_request: AnalysisRequest = json.loads(event["body"])
-
-    mime = "image/png"  
     
-    image_data = analysis_request.get('imageData')
-    print("IMAGE DATA" , image_data)
-    mime = analysis_request.get('mime')
+    # Get path from ALB event
+    path = event.get('path', '')
+    print(f"Request path: {path}")
+    
+    # Handle presigned URL generation
+    if path == '/api/presigned-url':
+        try:
+            request_body = json.loads(event["body"])
+            s3_key = request_body.get('key')
+            content_type = request_body.get('contentType')
+            
+            # Generate presigned URL for upload
+            presigned_url = s3_client.generate_presigned_url(
+                'put_object',
+                Params={'Bucket': s3_image_bucket, 'Key': s3_key, 'ContentType': content_type},
+                ExpiresIn=3600
+            )
+            
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
+                    'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'
+                },
+                'body': json.dumps({'uploadUrl': presigned_url}),
+                'isBase64Encoded': False
+            }
+        except Exception as e:
+            return {
+                'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': str(e)}),
+                'isBase64Encoded': False
+            }
+    
+    # Handle Step Function execution - parse request body
+    analysis_request: AnalysisRequest = json.loads(event["body"])
+    s3_key = analysis_request.get('s3Key')
+    mime = analysis_request.get('mime', 'image/png')
     language = analysis_request.get('language')
+    
+    if not s3_key:
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'error': 'S3 key is required'}),
+            'isBase64Encoded': False
+        }
+    
+    # Get image data from S3 for legacy processing
+    try:
+        response = s3_client.get_object(Bucket=s3_image_bucket, Key=s3_key)
+        image_bytes = response['Body'].read()
+        image_data = base64.b64encode(image_bytes).decode('utf-8')
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'error': f'Failed to retrieve image from S3: {str(e)}'}),
+            'isBase64Encoded': False
+        }
 
-    # Construct a file name variable with the following format: a2c-drawing-TIMESTAMP
-    fileName = f"a2c-drawing-{int(time.time())}.png"
-    img_bytes = io.BytesIO(base64.b64decode(image_data))
-    s3_client.upload_fileobj(img_bytes,
-                            s3_image_bucket, 
-                            s3_prefix + fileName,
-                            ExtraArgs={"ContentType": mime}
-                            )
-
-    # Process the S3 URI using the imported function
+    # Process the image
     result: AnalysisResponse = web_responder_do_it_all(image_data, mime)
 
     # Construct Step Fucntion ARN
@@ -117,8 +172,7 @@ def lambda_handler(event, context) -> 'LambdaResponse':
     response = stepfunctions.start_execution(
         stateMachineArn=step_function_arn,
         input=json.dumps({
-            #"s3_uri": f"s3://{s3_image_bucket}/{s3_prefix}{analysis_request['image_filename']}",
-            "file_path": f"s3://{s3_image_bucket}/{s3_prefix}{fileName}",
+            "file_path": f"s3://{s3_image_bucket}/{s3_key}",
             "code_language": language
         })
     )

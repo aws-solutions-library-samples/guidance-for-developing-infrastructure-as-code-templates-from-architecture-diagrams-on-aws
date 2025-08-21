@@ -1,13 +1,18 @@
 import json
 import os
 import base64
-import time
 import boto3
+import time
+import random
 from botocore.exceptions import ClientError
 
 dynamodb = boto3.resource('dynamodb')
 bedrock = boto3.client('bedrock-runtime', region_name=os.environ['REGION'])
+s3_client = boto3.client('s3')
 table = dynamodb.Table(os.environ['CONNECTIONS_TABLE'])
+
+# S3 bucket for images
+s3_image_bucket = f'{os.environ["ACCOUNT_ID"]}-a2c-diagramstorage-{os.environ["REGION"]}'
 
 def send_message(connection_id, message, event_context):
     try:
@@ -31,86 +36,95 @@ def send_message(connection_id, message, event_context):
     except Exception as e:
         print(f"Unexpected error sending message: {str(e)}")
 
-# Use DynamoDB for chunked data storage
-def get_chunked_session(connection_id):
-    try:
-        response = table.get_item(Key={'connectionId': f"{connection_id}_chunks"})
-        return response.get('Item')
-    except:
-        return None
-
-def save_chunked_session(connection_id, session_data):
-    table.put_item(
-        Item={
-            'connectionId': f"{connection_id}_chunks",
-            'ttl': int(time.time()) + 3600,  # 1 hour TTL
-            **session_data
-        }
-    )
-
-def delete_chunked_session(connection_id):
-    table.delete_item(Key={'connectionId': f"{connection_id}_chunks"})
-
-def process_bedrock_analysis(connection_id, image_data, request_context):
-    """Process Bedrock analysis with the complete image data"""
-    print(f"Starting Bedrock analysis for connection: {connection_id}")
+def process_bedrock_analysis(connection_id, s3_key, request_context):
+    """Process Bedrock analysis with image from S3 with retry logic"""
+    print(f"Starting Bedrock analysis for connection: {connection_id}, S3 key: {s3_key}")
     
-    # Bedrock streaming request
-    request_body = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 2048,
-        "messages": [{
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "You are an expert AWS solutions architect. Analyze this architecture diagram and provide a detailed description of the AWS services, their configurations, and relationships. Include use case analysis and complexity level (1-3 based on number of services: 1=≤4 services, 2=5-10 services, 3=>10 services)."
-                },
-                {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "image/png",
-                        "data": image_data
-                    }
-                }
-            ]
-        }]
-    }
+    max_retries = 3
+    base_delay = 2
     
-    try:
-        # Stream response from Bedrock
-        response = bedrock.invoke_model_with_response_stream(
-            modelId='anthropic.claude-3-5-sonnet-20241022-v2:0',
-            body=json.dumps(request_body)
-        )
-        
-        print(f"Bedrock streaming started for connection: {connection_id}")
-        
-        # Process streaming response
-        for event_chunk in response['body']:
-            chunk = json.loads(event_chunk['chunk']['bytes'])
+    for attempt in range(max_retries + 1):
+        try:
+            # Get image from S3
+            response = s3_client.get_object(Bucket=s3_image_bucket, Key=s3_key)
+            image_bytes = response['Body'].read()
+            image_data = base64.b64encode(image_bytes).decode('utf-8')
             
-            if chunk['type'] == 'content_block_delta':
-                text = chunk['delta'].get('text', '')
-                if text:
-                    send_message(connection_id, {
-                        'type': 'stream',
-                        'content': text
-                    }, request_context)
-            elif chunk['type'] == 'message_stop':
-                send_message(connection_id, {
-                    'type': 'complete'
-                }, request_context)
-                break
+            # Bedrock streaming request
+            request_body = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 2048,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "You are an expert AWS solutions architect. Analyze this architecture diagram and provide a detailed description of the AWS services, their configurations, and relationships. Include use case analysis and complexity level (1-3 based on number of services: 1=≤4 services, 2=5-10 services, 3=>10 services)."
+                        },
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/png",
+                                "data": image_data
+                            }
+                        }
+                    ]
+                }]
+            }
+            
+            # Stream response from Bedrock with retry logic
+            response = bedrock.invoke_model_with_response_stream(
+                modelId='us.anthropic.claude-sonnet-4-20250514-v1:0',
+                body=json.dumps(request_body)
+            )
+            
+            print(f"Bedrock streaming started for connection: {connection_id}")
+            
+            # Process streaming response
+            for event_chunk in response['body']:
+                chunk = json.loads(event_chunk['chunk']['bytes'])
                 
-    except Exception as bedrock_error:
-        print(f"Bedrock error: {str(bedrock_error)}")
-        send_message(connection_id, {
-            'type': 'error',
-            'message': f'Bedrock analysis failed: {str(bedrock_error)}'
-        }, request_context)
-        raise
+                if chunk['type'] == 'content_block_delta':
+                    text = chunk['delta'].get('text', '')
+                    if text:
+                        send_message(connection_id, {
+                            'type': 'stream',
+                            'content': text
+                        }, request_context)
+                elif chunk['type'] == 'message_stop':
+                    send_message(connection_id, {
+                        'type': 'complete'
+                    }, request_context)
+                    break
+            
+            # If we get here, the request succeeded
+            return
+            
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == 'ServiceUnavailableException' and attempt < max_retries:
+                # Exponential backoff with jitter
+                delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                print(f"Bedrock throttled, retrying in {delay:.2f}s (attempt {attempt + 1}/{max_retries + 1})")
+                
+                send_message(connection_id, {
+                    'type': 'stream',
+                    'content': f"\n\n⏳ Service busy, retrying in {int(delay)}s... (attempt {attempt + 1})\n\n"
+                }, request_context)
+                
+                time.sleep(delay)
+                continue
+            else:
+                # Non-retryable error or max retries exceeded
+                raise e
+        except Exception as error:
+            print(f"Analysis error: {str(error)}")
+            send_message(connection_id, {
+                'type': 'error',
+                'message': f'Analysis failed: {str(error)}'
+            }, request_context)
+            raise
 
 def handler(event, context):
     print(f"Message handler event: {json.dumps(event)}")
@@ -130,82 +144,17 @@ def handler(event, context):
         print(f"Processing action: {action} for connection: {connection_id}")
         
         if action == 'analyze':
-            # Single message with complete image data
-            image_data = body.get('imageData')
+            # Get S3 key for image
+            s3_key = body.get('s3Key')
             
-            if not image_data:
+            if not s3_key:
                 send_message(connection_id, {
                     'type': 'error',
-                    'message': 'No image data provided'
+                    'message': 'S3 key is required'
                 }, request_context)
                 return {'statusCode': 400}
             
-            process_bedrock_analysis(connection_id, image_data, request_context)
-            
-        elif action == 'analyze_start':
-            # Initialize chunked data collection
-            total_chunks = body.get('totalChunks', 0)
-            session_data = {
-                'chunks': {},
-                'total_chunks': total_chunks,
-                'language': body.get('language')
-            }
-            save_chunked_session(connection_id, session_data)
-            print(f"Started chunked upload for {connection_id}: {total_chunks} chunks")
-            
-        elif action == 'analyze_chunk':
-            # Collect chunk data
-            session = get_chunked_session(connection_id)
-            if not session:
-                send_message(connection_id, {
-                    'type': 'error',
-                    'message': 'No active chunked upload session'
-                }, request_context)
-                return {'statusCode': 400}
-                
-            chunk_index = body.get('chunkIndex')
-            chunk_data = body.get('chunkData')
-            
-            # Update chunks in session
-            chunks = session.get('chunks', {})
-            chunks[str(chunk_index)] = chunk_data
-            session['chunks'] = chunks
-            
-            save_chunked_session(connection_id, session)
-            print(f"Received chunk {chunk_index} for {connection_id}")
-            
-        elif action == 'analyze_end':
-            # Process complete chunked data
-            session = get_chunked_session(connection_id)
-            if not session:
-                send_message(connection_id, {
-                    'type': 'error',
-                    'message': 'No active chunked upload session'
-                }, request_context)
-                return {'statusCode': 400}
-                
-            # Reconstruct complete image data
-            complete_data = ''
-            chunks = session.get('chunks', {})
-            total_chunks = int(session['total_chunks'])  # Convert Decimal to int
-            for i in range(total_chunks):
-                chunk_key = str(i)
-                if chunk_key in chunks:
-                    complete_data += chunks[chunk_key]
-                else:
-                    send_message(connection_id, {
-                        'type': 'error',
-                        'message': f'Missing chunk {i}'
-                    }, request_context)
-                    return {'statusCode': 400}
-            
-            print(f"Reconstructed complete image data for {connection_id}: {len(complete_data)} chars")
-            
-            # Clean up session data
-            delete_chunked_session(connection_id)
-            
-            # Process with Bedrock
-            process_bedrock_analysis(connection_id, complete_data, request_context)
+            process_bedrock_analysis(connection_id, s3_key, request_context)
                     
         else:
             send_message(connection_id, {
