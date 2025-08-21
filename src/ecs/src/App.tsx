@@ -39,6 +39,8 @@ function App() {
     const [currentPage, setCurrentPage] = useState('home')
     const [optimizeInProgress, setOptimizeInProgress] = useState(false)
     const [contentType, setContentType] = useState<'analysis' | 'optimization' | null>(null)
+    const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
+    const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
 
     useEffect(() => {
         console.log('App useEffect running');
@@ -69,6 +71,96 @@ function App() {
         setIsLoading(false);
     }, []);
 
+    // WebSocket connection management
+    useEffect(() => {
+        if (isAuthenticated && connectionStatus === 'disconnected') {
+            connectWebSocket();
+        }
+        return () => {
+            if (wsConnection) {
+                wsConnection.close();
+            }
+        };
+    }, [isAuthenticated, connectionStatus]);
+
+    const connectWebSocket = () => {
+        setConnectionStatus('connecting');
+        const wsUrl = process.env.REACT_APP_WEBSOCKET_URL || 'wss://ogfotgvwra.execute-api.us-west-2.amazonaws.com/prod';
+        console.log('Connecting to WebSocket:', wsUrl);
+        const ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+            console.log('WebSocket connected successfully');
+            setConnectionStatus('connected');
+            setWsConnection(ws);
+        };
+        
+        ws.onmessage = (event) => {
+            console.log('WebSocket message received:', event.data);
+            try {
+                const message = JSON.parse(event.data);
+                handleWebSocketMessage(message);
+            } catch (e) {
+                console.error('Error parsing WebSocket message:', e);
+            }
+        };
+        
+        ws.onclose = (event) => {
+            console.log('WebSocket disconnected:', event.code, event.reason);
+            setConnectionStatus('disconnected');
+            setWsConnection(null);
+            
+            // Auto-reconnect after 3 seconds if not a normal closure
+            if (event.code !== 1000 && isAuthenticated) {
+                setTimeout(() => {
+                    if (connectionStatus === 'disconnected') {
+                        console.log('Attempting to reconnect WebSocket...');
+                        connectWebSocket();
+                    }
+                }, 3000);
+            }
+        };
+        
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            setConnectionStatus('disconnected');
+            setFlashbarItems([{
+                type: "error",
+                content: "WebSocket connection failed. Please check your network connection.",
+                dismissible: true,
+                onDismiss: () => setFlashbarItems([])
+            }]);
+        };
+    };
+
+    const handleWebSocketMessage = (message: any) => {
+        switch (message.type) {
+            case 'stream':
+                setPerplexityResponse(prev => prev + message.content);
+                break;
+            case 'complete':
+                setInProgress(false);
+                setIsScanning(false);
+                setFlashbarItems([{
+                    type: "success",
+                    content: "Analysis completed",
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+                break;
+            case 'error':
+                setInProgress(false);
+                setIsScanning(false);
+                setFlashbarItems([{
+                    type: "error",
+                    content: `Error: ${message.message}`,
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+                break;
+        }
+    };
+
     // Show loading state while checking authentication
     if (isLoading) {
         return (
@@ -79,10 +171,17 @@ function App() {
     }
 
     async function onSubmit() {
-        if (!imageData) return;
+        if (!imageData || !wsConnection || connectionStatus !== 'connected') {
+            setFlashbarItems([{
+                type: "error",
+                content: "WebSocket not connected. Please refresh the page.",
+                dismissible: true,
+                onDismiss: () => setFlashbarItems([])
+            }]);
+            return;
+        }
 
         try {
-            const start = new Date().getTime()
             setInProgress(true)
             setPerplexityResponse('')
             setCdkModulesResponse('')
@@ -116,7 +215,6 @@ function App() {
                     setScanProgress(prev => {
                         if (prev >= 100) {
                             clearInterval(horizontalInterval)
-                            setIsScanning(false)
                             resolve(void 0)
                             return 100
                         }
@@ -125,175 +223,78 @@ function App() {
                 }, 100)
             })
 
-            // Call web responder lambda
+            // Send analysis request via WebSocket with chunked data
+            const base64Data = imageData?.split(",")?.[1];
+            const chunkSize = 20000; // 20KB chunks to stay under 32KB limit
+            
+            if (base64Data && base64Data.length > chunkSize) {
+                // Send in chunks
+                const chunks: string[] = [];
+                for (let i = 0; i < base64Data.length; i += chunkSize) {
+                    chunks.push(base64Data.slice(i, i + chunkSize));
+                }
+                
+                // Send start message
+                wsConnection.send(JSON.stringify({
+                    action: 'analyze_start',
+                    totalChunks: chunks.length,
+                    language: language?.value
+                }));
+                
+                // Send chunks sequentially with promises
+                const sendChunks = async () => {
+                    for (let i = 0; i < chunks.length; i++) {
+                        wsConnection.send(JSON.stringify({
+                            action: 'analyze_chunk',
+                            chunkIndex: i,
+                            chunkData: chunks[i]
+                        }));
+                        // Small delay between chunks
+                        await new Promise(resolve => setTimeout(resolve, 10));
+                    }
+                    
+                    // Send end message after all chunks are sent
+                    wsConnection.send(JSON.stringify({
+                        action: 'analyze_end'
+                    }));
+                };
+                
+                sendChunks().catch(console.error);
+            } else {
+                // Send as single message if small enough
+                wsConnection.send(JSON.stringify({
+                    action: 'analyze',
+                    imageData: base64Data,
+                    language: language?.value
+                }));
+            }
+
+            // Trigger Step Function for code generation (async)
             const origin = window.location.origin;
             const apiUrl = origin + "/api";
-
-            const lambdaPromise = fetch(
-                apiUrl,
-                {
-                    body: JSON.stringify({
-                        imageData: imageData?.split(",")?.[1],
-                        mime: imageFile[0].type,
-                        language: language?.value,
-                    }),
-                    method: "POST",
-                    credentials: "include",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
-
-            // Call Perplexity API for streaming response
-            const PERPLEXITY_API_KEY = process.env.REACT_APP_PERPLEXITY_API_KEY;
-
-            const perplexityPromise = fetch('https://api.perplexity.ai/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'text/event-stream'
-                },
-                body: JSON.stringify({
-                    model: "sonar-pro",
-                    stream: true,
-                    messages: [
-                        {
-                            role: "user",
-                            content: [
-                                { type: "text", text: "You are an expert AWS solutions architect and cloud infrastructure specialist with deep knowledge of AWS services, best practices, and the AWS Cloud Development Kit (CDK). Your task is to analyze the attached AWS architecture diagram and provide detailed, structured descriptions that can be used by other AI systems to generate deployable AWS CDK code.You have the following capabilities and traits:1.AWS Expertise: You have comprehensive knowledge of all AWS services, their configurations, and how they interact within complex architectures.2.Diagram Analysis: You can quickly interpret and understand AWS architecture diagrams, identifying all components and their relationships.3.Detail-Oriented: You provide thorough, specific descriptions of each component, including resource names, settings, and configuration details crucial for CDK implementation.4.Best Practices: You understand and can explain AWS best practices for security, scalability, and cost optimization.5.CDK-Focused: Your descriptions are structured in a way that aligns with AWS CDK constructs and patterns, facilitating easy code generation.6.Clear Communication: You explain complex architectures in a clear, logical manner that both humans and AI systems can understand and act upon.7.Holistic Understanding: You grasp not just individual components, but also the overall system purpose, data flow, and integration points. Your goal is to create a description that serves as a comprehensive blueprint for CDK code generation.What use case it is trying to address? Evaluate the complexity level of this architecture as level 1 or level 2 or level 3 based on the definitions described here: Level 1 : less than or equals to 4 different types of AWS services are used in the architecture diagram. Level 2 : 5 to 10 different types of AWS services are used in the architecture diagram. Level 3 : more than 10 different types of AWS services are used in the architecture diagram.At the end of your response include a numbered list of AWS resources along with their counts and names. For example, say  Resources summary: 1. 'N' s3 buckets A, , B , C 2. 'N' lambda functions A B  etc. and so on for all services present in the architecture diagram" },
-                                { type: "image_url", image_url: { url: imageData } }
-                            ]
-                        }
-                    ]
-                })
-            });
-
-            // Process Perplexity streaming response
-            const perplexityResponse = await perplexityPromise;
-            if (perplexityResponse.ok) {
-                const reader = perplexityResponse.body?.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-
-                if (reader) {
-                    let streamDone = false;
-                    while (!streamDone) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6).trim();
-                                if (data === '[DONE]') {
-                                    streamDone = true;
-                                    break;
-                                }
-
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    const content = parsed?.choices?.[0]?.delta?.content;
-                                    if (content) {
-                                        setPerplexityResponse(prev => prev + content);
-                                    }
-                                } catch (e) {
-                                    // Ignore parsing errors
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Wait for lambda response (but don't display it)
-            await lambdaPromise;
             
-            // Make second Perplexity API call for CDK modules breakdown
-            setCdkModulesResponse('');
-            const cdkModulesPromise = fetch('https://api.perplexity.ai/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'text/event-stream'
-                },
+            fetch(apiUrl, {
                 body: JSON.stringify({
-                    model: "sonar-pro",
-                    stream: true,
-                    messages: [
-                        {
-                            role: "user",
-                            content: [
-                                { type: "text", text: "Based on this AWS architecture diagram, list what AWS resources each module should contain if you were developing an AWS CDK project based upon it. Provide only the module names and associated resources." },
-                                { type: "image_url", image_url: { url: imageData } }
-                            ]
-                        }
-                    ]
-                })
-            });
-            
-            // Process CDK modules streaming response
-            const cdkModulesApiResponse = await cdkModulesPromise;
-            if (cdkModulesApiResponse.ok) {
-                const reader = cdkModulesApiResponse.body?.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-                
-                if (reader) {
-                    let streamDone = false;
-                    while (!streamDone) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-                        
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6).trim();
-                                if (data === '[DONE]') {
-                                    streamDone = true;
-                                    break;
-                                }
-                                
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    const content = parsed?.choices?.[0]?.delta?.content;
-                                    if (content) {
-                                        setCdkModulesResponse(prev => prev + content);
-                                    }
-                                } catch (e) {
-                                    // Ignore parsing errors
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            const end = new Date().getTime()
-            setFlashbarItems([{
-                type: "success",
-                content: `Analysis completed in ${(end - start) / 1000} seconds`,
-                dismissible: true,
-                onDismiss: () => setFlashbarItems([])
-            }, {
-                type: "info",
-                content: "Code synthesis initiated",
-                dismissible: true,
-                onDismiss: () => setFlashbarItems([])
-            }])
+                    imageData: imageData?.split(",")?.[1],
+                    mime: imageFile[0].type,
+                    language: language?.value,
+                }),
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }).then(() => {
+                setFlashbarItems(prev => [...prev, {
+                    type: "info",
+                    content: "Code synthesis initiated",
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+            }).catch(console.error);
         } catch (e) {
             console.error(e);
             setFlashbarItems([{ type: "error", content: "Error analyzing architecture", dismissible: true, onDismiss: () => setFlashbarItems([]) }])
-        } finally {
-            setInProgress(false)
         }
     }
 
@@ -565,8 +566,8 @@ function App() {
                                     <FormField>
                                         <SpaceBetween direction="horizontal" size="s">
                                             <Button variant={"primary"}
-                                                disabled={!imageData?.length || !language || isScanning}
-                                                disabledReason={"Please select image and language"}
+                                                disabled={!imageData?.length || !language || isScanning || connectionStatus !== 'connected'}
+                                                disabledReason={connectionStatus !== 'connected' ? "WebSocket not connected" : "Please select image and language"}
                                                 onClick={x => onSubmit()}
                                                 loading={inProgress}
                                                 loadingText={isScanning ? "Scanning..." : "Generating"}>
@@ -581,6 +582,32 @@ function App() {
                                                 {optimizeInProgress ? "Optimizing..." : "Optimize"}
                                             </Button>
                                         </SpaceBetween>
+                                    </FormField>
+                                    <FormField>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '8px',
+                                            padding: '8px',
+                                            backgroundColor: connectionStatus === 'connected' ? '#f0f9ff' : '#fef2f2',
+                                            borderRadius: '4px',
+                                            border: `1px solid ${connectionStatus === 'connected' ? '#0ea5e9' : '#ef4444'}`
+                                        }}>
+                                            <div style={{
+                                                width: '8px',
+                                                height: '8px',
+                                                borderRadius: '50%',
+                                                backgroundColor: connectionStatus === 'connected' ? '#22c55e' : 
+                                                               connectionStatus === 'connecting' ? '#f59e0b' : '#ef4444'
+                                            }} />
+                                            <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                                                WebSocket: {connectionStatus === 'connected' ? 'Connected' : 
+                                                          connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+                                            </span>
+                                            {connectionStatus === 'disconnected' && (
+                                                <Button onClick={connectWebSocket}>Reconnect</Button>
+                                            )}
+                                        </div>
                                     </FormField>
                                 </SpaceBetween>
                             </Container>
@@ -604,7 +631,7 @@ function App() {
                             {!perplexityResponse && <div>Architecture analysis will appear here after processing</div>}
                             <Markdown>
                                 {perplexityResponse}
-                            </Markdown>
+            </Markdown>
                         </Container>
                     </ColumnLayout>
                 )

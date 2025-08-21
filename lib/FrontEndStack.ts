@@ -19,6 +19,7 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 interface Props extends cdk.StackProps {
   diagramStorageBucket: s3.Bucket;
   applicationQualifier: string;
+  webSocketUrl?: string;
 }
 
 export class FrontEndStack extends cdk.Stack {
@@ -278,6 +279,11 @@ export class FrontEndStack extends cdk.Stack {
         }]
       })
     });
+
+    // Add WebSocket URL as environment variable for ECS
+    if (props.webSocketUrl) {
+      this.service.taskDefinition.defaultContainer?.addEnvironment('REACT_APP_WEBSOCKET_URL', props.webSocketUrl);
+    }
 
     // ===== Output URLs and UserPool IDs =====
     new cdk.CfnOutput(this, 'CloudFrontUrl', {

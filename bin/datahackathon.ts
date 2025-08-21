@@ -14,20 +14,25 @@ const storageStack = new StorageStack(app, `${AppConfig.applicationName}-Storage
   applicationQualifier: AppConfig.applicationQualifier,
 });
 
-const frontEndStack = new FrontEndStack(app, `${AppConfig.applicationName}-FrontEndStack`, {
-  env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
-  diagramStorageBucket: storageStack.diagramStorageBucket,
-  applicationQualifier: AppConfig.applicationQualifier,
-});
-
-new ProcessingStack(app, `${AppConfig.applicationName}-ProcessingStack`, {
+const processingStack = new ProcessingStack(app, `${AppConfig.applicationName}-ProcessingStack`, {
   env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
   recipientEmailAddresses: [],
   diagramStorageBucket: storageStack.diagramStorageBucket,
   codeOutputBucket: storageStack.codeOutputBucket,
-  responderLambda: frontEndStack.responderLambda,
+  responderLambda: null as any, // Will be set after FrontEndStack creation
   applicationQualifier: AppConfig.applicationQualifier,
 });
+
+const frontEndStack = new FrontEndStack(app, `${AppConfig.applicationName}-FrontEndStack`, {
+  env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
+  diagramStorageBucket: storageStack.diagramStorageBucket,
+  applicationQualifier: AppConfig.applicationQualifier,
+  webSocketUrl: `wss://${processingStack.webSocketApi.apiId}.execute-api.${AppConfig.region}.amazonaws.com/prod`,
+});
+
+// Grant Step Function execution to responder Lambda
+const stateMachine = processingStack.node.findChild('StateMachine') as cdk.aws_stepfunctions.StateMachine;
+stateMachine.grantStartExecution(frontEndStack.responderLambda);
 
 // Add CDK Nag checks
 // cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
