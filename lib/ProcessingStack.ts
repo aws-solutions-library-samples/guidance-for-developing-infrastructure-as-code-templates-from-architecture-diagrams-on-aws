@@ -118,9 +118,9 @@ export class ProcessingStack extends cdk.Stack {
     // WebSocket Lambda functions
     const connectHandler = new lambda.Function(this, 'WebSocketConnect', {
       functionName: `${props.applicationQualifier}-websocket-connect`,
-      runtime: lambda.Runtime.PYTHON_3_11,
+      runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'connect.handler',
-      code: lambda.Code.fromAsset('src/lambda-functions/websocket-handler'),
+      code: lambda.Code.fromAsset('src/lambda-functions/websocket-connect'),
       environment: {
         CONNECTIONS_TABLE: this.connectionsTable.tableName,
       },
@@ -128,9 +128,9 @@ export class ProcessingStack extends cdk.Stack {
 
     const disconnectHandler = new lambda.Function(this, 'WebSocketDisconnect', {
       functionName: `${props.applicationQualifier}-websocket-disconnect`,
-      runtime: lambda.Runtime.PYTHON_3_11,
+      runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'disconnect.handler',
-      code: lambda.Code.fromAsset('src/lambda-functions/websocket-handler'),
+      code: lambda.Code.fromAsset('src/lambda-functions/websocket-disconnect'),
       environment: {
         CONNECTIONS_TABLE: this.connectionsTable.tableName,
       },
@@ -138,9 +138,9 @@ export class ProcessingStack extends cdk.Stack {
 
     const messageHandler = new lambda.Function(this, 'WebSocketMessage', {
       functionName: `${props.applicationQualifier}-websocket-message`,
-      runtime: lambda.Runtime.PYTHON_3_11,
+      runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'message.handler',
-      code: lambda.Code.fromAsset('src/lambda-functions/websocket-handler'),
+      code: lambda.Code.fromAsset('src/lambda-functions/websocket-message'),
       timeout: cdk.Duration.minutes(15),
       memorySize: 1024,
       environment: {

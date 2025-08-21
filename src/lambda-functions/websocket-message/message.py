@@ -6,6 +6,10 @@ import time
 import random
 from botocore.exceptions import ClientError
 
+# Load configuration
+with open('websocket_config.json', 'r') as f:
+    config = json.load(f)
+
 dynamodb = boto3.resource('dynamodb')
 bedrock = boto3.client('bedrock-runtime', region_name=os.environ['REGION'])
 s3_client = boto3.client('s3')
@@ -52,14 +56,14 @@ def process_bedrock_analysis(connection_id, s3_key, request_context):
             
             # Bedrock streaming request
             request_body = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 2048,
+                "anthropic_version": config["anthropic_version"],
+                "max_tokens": config["max_tokens"],
                 "messages": [{
                     "role": "user",
                     "content": [
                         {
                             "type": "text",
-                            "text": "You are an expert AWS solutions architect. Analyze this architecture diagram and provide a detailed description of the AWS services, their configurations, and relationships. Include use case analysis and complexity level (1-3 based on number of services: 1=≤4 services, 2=5-10 services, 3=>10 services)."
+                            "text": config["analysis_prompt"]
                         },
                         {
                             "type": "image",
@@ -75,7 +79,7 @@ def process_bedrock_analysis(connection_id, s3_key, request_context):
             
             # Stream response from Bedrock with retry logic
             response = bedrock.invoke_model_with_response_stream(
-                modelId='us.anthropic.claude-sonnet-4-20250514-v1:0',
+                modelId=config["model_id"],
                 body=json.dumps(request_body)
             )
             
