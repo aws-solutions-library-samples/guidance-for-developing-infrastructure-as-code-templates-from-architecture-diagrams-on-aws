@@ -153,6 +153,7 @@ function App() {
             case 'cdk_modules_complete':
                 setInProgress(false);
                 setIsScanning(false);
+                setThinkingResponse('');
                 setFlashbarItems([{
                     type: "success",
                     content: "Analysis completed",
@@ -165,6 +166,7 @@ function App() {
                 break;
             case 'optimization_complete':
                 setOptimizeInProgress(false);
+                setThinkingResponse('');
                 setFlashbarItems([{
                     type: "success",
                     content: "Optimization completed",
@@ -178,6 +180,7 @@ function App() {
             case 'complete':
                 setInProgress(false);
                 setIsScanning(false);
+                setThinkingResponse('');
                 setFlashbarItems([{
                     type: "success",
                     content: "Analysis completed",
