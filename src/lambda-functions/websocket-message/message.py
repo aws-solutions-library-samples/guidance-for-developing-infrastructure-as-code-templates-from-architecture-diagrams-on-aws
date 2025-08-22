@@ -58,7 +58,7 @@ def process_bedrock_request(connection_id, s3_key, prompt_type, request_context)
         else:  # optimization
             prompt = config["optimization_prompt"]
         
-        # Bedrock request
+        # Bedrock streaming request with thinking enabled
         request_body = {
             "anthropic_version": config["anthropic_version"],
             "max_tokens": config["max_tokens"],
@@ -68,34 +68,49 @@ def process_bedrock_request(connection_id, s3_key, prompt_type, request_context)
                     {"type": "text", "text": prompt},
                     {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": image_data}}
                 ]
-            }]
+            }],
+            "thinking": {
+                "type": "enabled",
+                "budget_tokens": 2000
+            }
         }
         
-        # Get response from Bedrock
-        response = bedrock.invoke_model(
+        # Stream response from Bedrock
+        response = bedrock.invoke_model_with_response_stream(
             modelId=config["model_id"],
             body=json.dumps(request_body)
         )
         
-        result = json.loads(response.get("body").read())
-        content = result["content"][0]["text"]
-        
-        # Send content in chunks to simulate streaming
-        chunk_size = 50
-        for i in range(0, len(content), chunk_size):
-            chunk = content[i:i+chunk_size]
-            message_type = 'stream' if prompt_type == 'analysis' else f'{prompt_type}_stream'
-            send_message(connection_id, {
-                'type': message_type,
-                'content': chunk
-            }, request_context)
-            time.sleep(0.1)  # Small delay to simulate streaming
-        
-        # Send completion message
-        message_type = 'complete' if prompt_type == 'analysis' else f'{prompt_type}_complete'
-        send_message(connection_id, {
-            'type': message_type
-        }, request_context)
+        # Process streaming response
+        for event_chunk in response['body']:
+            chunk = json.loads(event_chunk['chunk']['bytes'])
+            
+            if chunk['type'] == 'content_block_delta':
+                delta = chunk.get('delta', {})
+                # Handle thinking content
+                if delta.get('type') == 'thinking_delta':
+                    thinking = delta.get('thinking', '')
+                    if thinking:
+                        message_type = 'thinking_stream' if prompt_type == 'analysis' else f'{prompt_type}_thinking_stream'
+                        send_message(connection_id, {
+                            'type': message_type,
+                            'content': thinking
+                        }, request_context)
+                # Handle text content
+                elif delta.get('type') == 'text_delta':
+                    text = delta.get('text', '')
+                    if text:
+                        message_type = 'stream' if prompt_type == 'analysis' else f'{prompt_type}_stream'
+                        send_message(connection_id, {
+                            'type': message_type,
+                            'content': text
+                        }, request_context)
+            elif chunk['type'] == 'message_stop':
+                message_type = 'complete' if prompt_type == 'analysis' else f'{prompt_type}_complete'
+                send_message(connection_id, {
+                    'type': message_type
+                }, request_context)
+                break
         
     except Exception as error:
         print(f"{prompt_type} error: {str(error)}")

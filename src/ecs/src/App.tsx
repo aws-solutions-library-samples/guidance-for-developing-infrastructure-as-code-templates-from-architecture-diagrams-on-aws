@@ -24,6 +24,7 @@ import { OptionDefinition } from "@cloudscape-design/components/internal/compone
 function App() {
     const [analysisResponse, setAnalysisResponse] = useState<string>('')
     const [cdkModulesResponse, setCdkModulesResponse] = useState<string>('')
+    const [thinkingResponse, setThinkingResponse] = useState<string>('')
     const [inProgress, setInProgress] = useState(false)
     const [imageData, setImageData] = useState<string | undefined>()
     const [imageFile, setImageFile] = useState<File[]>([])
@@ -139,7 +140,12 @@ function App() {
             case 'analysis_stream':
                 setAnalysisResponse(prev => prev + message.content);
                 break;
-
+            case 'thinking_stream':
+            case 'analysis_thinking_stream':
+            case 'cdk_modules_thinking_stream':
+            case 'optimization_thinking_stream':
+                setThinkingResponse(prev => prev + message.content);
+                break;
             case 'cdk_modules_stream':
                 console.log('Received CDK modules stream:', message.content);
                 setCdkModulesResponse(prev => prev + message.content);
@@ -241,6 +247,7 @@ function App() {
             setInProgress(true)
             setAnalysisResponse('')
             setCdkModulesResponse('')
+            setThinkingResponse('')
             setContentType('analysis')
 
             // Start the scanning animation and upload simultaneously
@@ -336,6 +343,7 @@ function App() {
         try {
             setOptimizeInProgress(true)
             setAnalysisResponse('')
+            setThinkingResponse('')
             setContentType('optimization')
 
             const s3Key = await ensureImageUploaded();
@@ -590,13 +598,21 @@ function App() {
                             </Container>
                         </SpaceBetween>
                         <Container>
+                            {thinkingResponse && (
+                                <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                                    <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '14px', color: '#6c757d' }}>🤔 Thinking...</div>
+                                    <div style={{ fontSize: '13px', color: '#495057', fontStyle: 'italic' }}>
+                                        <Markdown>{thinkingResponse}</Markdown>
+                                    </div>
+                                </div>
+                            )}
                             {contentType === 'analysis' && analysisResponse && (
                                 <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>Architecture Summary</div>
                             )}
                             {contentType === 'optimization' && analysisResponse && (
                                 <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>Recommended Optimizations</div>
                             )}
-                            {!analysisResponse && <div>Architecture analysis will appear here after processing</div>}
+                            {!analysisResponse && !thinkingResponse && <div>Architecture analysis will appear here after processing</div>}
                             <Markdown>
                                 {analysisResponse}
             </Markdown>
