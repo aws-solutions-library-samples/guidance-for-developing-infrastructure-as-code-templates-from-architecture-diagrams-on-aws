@@ -41,6 +41,7 @@ function App() {
     const [contentType, setContentType] = useState<'analysis' | 'optimization' | null>(null)
     const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
     const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
+    const [currentS3Key, setCurrentS3Key] = useState<string | null>(null)
 
     useEffect(() => {
         console.log('App useEffect running');
@@ -96,7 +97,7 @@ function App() {
         };
         
         ws.onmessage = (event) => {
-            console.log('WebSocket message received:', event.data);
+            //console.log('WebSocket message received:', event.data);
             try {
                 const message = JSON.parse(event.data);
                 handleWebSocketMessage(message);
@@ -135,6 +136,24 @@ function App() {
 
     const handleWebSocketMessage = (message: any) => {
         switch (message.type) {
+            case 'analysis_stream':
+                setPerplexityResponse(prev => prev + message.content);
+                break;
+
+            case 'cdk_modules_stream':
+                console.log('Received CDK modules stream:', message.content);
+                setCdkModulesResponse(prev => prev + message.content);
+                break;
+            case 'cdk_modules_complete':
+                setInProgress(false);
+                setIsScanning(false);
+                setFlashbarItems([{
+                    type: "success",
+                    content: "Analysis completed",
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+                break;
             case 'stream':
                 setPerplexityResponse(prev => prev + message.content);
                 break;
@@ -187,10 +206,33 @@ function App() {
             setCdkModulesResponse('')
             setContentType('analysis')
 
-            // Start the scanning animation
+            // Start the scanning animation and upload simultaneously
             setIsScanning(true)
             setScanProgress(0)
             setScanPhase('vertical')
+            
+            // Prepare upload data
+            const base64Data = imageData?.split(",")?.[1];
+            const imageBlob = new Blob([Uint8Array.from(atob(base64Data!), c => c.charCodeAt(0))], { type: imageFile[0].type });
+            const timestamp = Date.now();
+            const s3Key = `websocket-uploads/${timestamp}-${fileName}`;
+            setCurrentS3Key(s3Key);
+            
+            // Start upload and animation in parallel
+            const uploadPromise = (async () => {
+                const origin = window.location.origin;
+                const presignedResponse = await fetch(`${origin}/api/presigned-url`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: s3Key, contentType: imageFile[0].type })
+                });
+                const { uploadUrl } = await presignedResponse.json();
+                await fetch(uploadUrl, {
+                    method: 'PUT',
+                    body: imageBlob,
+                    headers: { 'Content-Type': imageFile[0].type }
+                });
+            })();
             
             // Phase 1: Vertical scanning
             await new Promise(resolve => {
@@ -222,31 +264,9 @@ function App() {
                     })
                 }, 100)
             })
-
-            // Upload image to S3 and send S3 key via WebSocket
-            const base64Data = imageData?.split(",")?.[1];
-            const imageBlob = new Blob([Uint8Array.from(atob(base64Data!), c => c.charCodeAt(0))], { type: imageFile[0].type });
             
-            // Generate unique filename
-            const timestamp = Date.now();
-            const s3Key = `websocket-uploads/${timestamp}-${fileName}`;
-            
-            // Upload to S3 using presigned URL
-            const origin = window.location.origin;
-            const presignedResponse = await fetch(`${origin}/api/presigned-url`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: s3Key, contentType: imageFile[0].type })
-            });
-            
-            const { uploadUrl } = await presignedResponse.json();
-            
-            // Upload image to S3
-            await fetch(uploadUrl, {
-                method: 'PUT',
-                body: imageBlob,
-                headers: { 'Content-Type': imageFile[0].type }
-            });
+            // Wait for upload to complete
+            await uploadPromise;
             
             // Send S3 key via WebSocket for analysis
             wsConnection.send(JSON.stringify({
@@ -254,6 +274,10 @@ function App() {
                 s3Key: s3Key,
                 language: language?.value
             }));
+            
+
+            
+            console.log('Upload completed, stored S3 key:', s3Key);
 
             // Trigger Step Function for code generation (async)
             const apiUrl = origin + "/api";

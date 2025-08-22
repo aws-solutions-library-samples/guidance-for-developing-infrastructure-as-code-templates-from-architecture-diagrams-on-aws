@@ -11,8 +11,8 @@ with open('websocket_config.json', 'r') as f:
     config = json.load(f)
 
 dynamodb = boto3.resource('dynamodb')
-bedrock = boto3.client('bedrock-runtime', region_name=os.environ['REGION'])
 s3_client = boto3.client('s3')
+bedrock = boto3.client('bedrock-runtime', region_name=os.environ['REGION'])
 table = dynamodb.Table(os.environ['CONNECTIONS_TABLE'])
 
 # S3 bucket for images
@@ -40,95 +40,65 @@ def send_message(connection_id, message, event_context):
     except Exception as e:
         print(f"Unexpected error sending message: {str(e)}")
 
-def process_bedrock_analysis(connection_id, s3_key, request_context):
-    """Process Bedrock analysis with image from S3 with retry logic"""
-    print(f"Starting Bedrock analysis for connection: {connection_id}, S3 key: {s3_key}")
+def process_bedrock_request(connection_id, s3_key, prompt_type, request_context):
+    """Process Bedrock request with image from S3"""
+    print(f"Starting Bedrock {prompt_type} for connection: {connection_id}, S3 key: {s3_key}")
     
-    max_retries = 3
-    base_delay = 2
-    
-    for attempt in range(max_retries + 1):
-        try:
-            # Get image from S3
-            response = s3_client.get_object(Bucket=s3_image_bucket, Key=s3_key)
-            image_bytes = response['Body'].read()
-            image_data = base64.b64encode(image_bytes).decode('utf-8')
-            
-            # Bedrock streaming request
-            request_body = {
-                "anthropic_version": config["anthropic_version"],
-                "max_tokens": config["max_tokens"],
-                "messages": [{
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": config["analysis_prompt"]
-                        },
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": "image/png",
-                                "data": image_data
-                            }
-                        }
-                    ]
-                }]
-            }
-            
-            # Stream response from Bedrock with retry logic
-            response = bedrock.invoke_model_with_response_stream(
-                modelId=config["model_id"],
-                body=json.dumps(request_body)
-            )
-            
-            print(f"Bedrock streaming started for connection: {connection_id}")
-            
-            # Process streaming response
-            for event_chunk in response['body']:
-                chunk = json.loads(event_chunk['chunk']['bytes'])
-                
-                if chunk['type'] == 'content_block_delta':
-                    text = chunk['delta'].get('text', '')
-                    if text:
-                        send_message(connection_id, {
-                            'type': 'stream',
-                            'content': text
-                        }, request_context)
-                elif chunk['type'] == 'message_stop':
-                    send_message(connection_id, {
-                        'type': 'complete'
-                    }, request_context)
-                    break
-            
-            # If we get here, the request succeeded
-            return
-            
-        except ClientError as e:
-            error_code = e.response['Error']['Code']
-            if error_code == 'ServiceUnavailableException' and attempt < max_retries:
-                # Exponential backoff with jitter
-                delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
-                print(f"Bedrock throttled, retrying in {delay:.2f}s (attempt {attempt + 1}/{max_retries + 1})")
-                
-                send_message(connection_id, {
-                    'type': 'stream',
-                    'content': f"\n\n⏳ Service busy, retrying in {int(delay)}s... (attempt {attempt + 1})\n\n"
-                }, request_context)
-                
-                time.sleep(delay)
-                continue
-            else:
-                # Non-retryable error or max retries exceeded
-                raise e
-        except Exception as error:
-            print(f"Analysis error: {str(error)}")
+    try:
+        # Get image from S3
+        response = s3_client.get_object(Bucket=s3_image_bucket, Key=s3_key)
+        image_bytes = response['Body'].read()
+        image_data = base64.b64encode(image_bytes).decode('utf-8')
+        
+        # Select prompt based on type
+        prompt = config["analysis_prompt"] if prompt_type == "analysis" else config["cdk_modules_prompt"]
+        
+        # Bedrock request
+        request_body = {
+            "anthropic_version": config["anthropic_version"],
+            "max_tokens": config["max_tokens"],
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": image_data}}
+                ]
+            }]
+        }
+        
+        # Get response from Bedrock
+        response = bedrock.invoke_model(
+            modelId=config["model_id"],
+            body=json.dumps(request_body)
+        )
+        
+        result = json.loads(response.get("body").read())
+        content = result["content"][0]["text"]
+        
+        # Send content in chunks to simulate streaming
+        chunk_size = 50
+        for i in range(0, len(content), chunk_size):
+            chunk = content[i:i+chunk_size]
+            message_type = 'stream' if prompt_type == 'analysis' else f'{prompt_type}_stream'
             send_message(connection_id, {
-                'type': 'error',
-                'message': f'Analysis failed: {str(error)}'
+                'type': message_type,
+                'content': chunk
             }, request_context)
-            raise
+            time.sleep(0.1)  # Small delay to simulate streaming
+        
+        # Send completion message
+        message_type = 'complete' if prompt_type == 'analysis' else f'{prompt_type}_complete'
+        send_message(connection_id, {
+            'type': message_type
+        }, request_context)
+        
+    except Exception as error:
+        print(f"{prompt_type} error: {str(error)}")
+        send_message(connection_id, {
+            'type': 'error',
+            'message': f'{prompt_type} failed: {str(error)}'
+        }, request_context)
+        raise
 
 def handler(event, context):
     print(f"Message handler event: {json.dumps(event)}")
@@ -158,7 +128,24 @@ def handler(event, context):
                 }, request_context)
                 return {'statusCode': 400}
             
-            process_bedrock_analysis(connection_id, s3_key, request_context)
+            # Process analysis first
+            process_bedrock_request(connection_id, s3_key, 'analysis', request_context)
+            
+            # Then process CDK modules
+            process_bedrock_request(connection_id, s3_key, 'cdk_modules', request_context)
+            
+        elif action == 'cdk_modules':
+            # Get S3 key for image
+            s3_key = body.get('s3Key')
+            
+            if not s3_key:
+                send_message(connection_id, {
+                    'type': 'error',
+                    'message': 'S3 key is required'
+                }, request_context)
+                return {'statusCode': 400}
+            
+            process_bedrock_request(connection_id, s3_key, 'cdk_modules', request_context)
                     
         else:
             send_message(connection_id, {
