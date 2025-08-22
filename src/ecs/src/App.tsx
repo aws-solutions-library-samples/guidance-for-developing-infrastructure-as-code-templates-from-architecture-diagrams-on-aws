@@ -43,6 +43,9 @@ function App() {
     const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
     const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
     const [currentS3Key, setCurrentS3Key] = useState<string | null>(null)
+    const [analysisStartTime, setAnalysisStartTime] = useState<number | null>(null)
+    const [analysisComplete, setAnalysisComplete] = useState(false)
+    const [cdkModulesComplete, setCdkModulesComplete] = useState(false)
 
     useEffect(() => {
         console.log('App useEffect running');
@@ -138,6 +141,9 @@ function App() {
     const handleWebSocketMessage = (message: any) => {
         switch (message.type) {
             case 'analysis_stream':
+                if (!analysisStartTime) {
+                    setAnalysisStartTime(Date.now());
+                }
                 setAnalysisResponse(prev => prev + message.content);
                 break;
             case 'thinking_stream':
@@ -151,15 +157,9 @@ function App() {
                 setCdkModulesResponse(prev => prev + message.content);
                 break;
             case 'cdk_modules_complete':
-                setInProgress(false);
-                setIsScanning(false);
+                setCdkModulesComplete(true);
                 setThinkingResponse('');
-                setFlashbarItems([{
-                    type: "success",
-                    content: "Analysis completed",
-                    dismissible: true,
-                    onDismiss: () => setFlashbarItems([])
-                }]);
+                checkBothComplete();
                 break;
             case 'optimization_stream':
                 setAnalysisResponse(prev => prev + message.content);
@@ -178,15 +178,9 @@ function App() {
                 setAnalysisResponse(prev => prev + message.content);
                 break;
             case 'complete':
-                setInProgress(false);
-                setIsScanning(false);
+                setAnalysisComplete(true);
                 setThinkingResponse('');
-                setFlashbarItems([{
-                    type: "success",
-                    content: "Analysis completed",
-                    dismissible: true,
-                    onDismiss: () => setFlashbarItems([])
-                }]);
+                checkBothComplete();
                 break;
             case 'error':
                 setInProgress(false);
@@ -199,6 +193,22 @@ function App() {
                 }]);
                 break;
         }
+    };
+
+    const checkBothComplete = () => {
+        setTimeout(() => {
+            if (analysisComplete && cdkModulesComplete && analysisStartTime) {
+                const duration = ((Date.now() - analysisStartTime) / 1000).toFixed(2);
+                setInProgress(false);
+                setIsScanning(false);
+                setFlashbarItems([{
+                    type: "success",
+                    content: `Analysis complete in ${duration} seconds`,
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+            }
+        }, 100);
     };
 
     // Show loading state while checking authentication
@@ -252,6 +262,9 @@ function App() {
             setCdkModulesResponse('')
             setThinkingResponse('')
             setContentType('analysis')
+            setAnalysisStartTime(null)
+            setAnalysisComplete(false)
+            setCdkModulesComplete(false)
 
             // Start the scanning animation and upload simultaneously
             setIsScanning(true)
