@@ -51,7 +51,12 @@ def process_bedrock_request(connection_id, s3_key, prompt_type, request_context)
         image_data = base64.b64encode(image_bytes).decode('utf-8')
         
         # Select prompt based on type
-        prompt = config["analysis_prompt"] if prompt_type == "analysis" else config["cdk_modules_prompt"]
+        if prompt_type == "analysis":
+            prompt = config["analysis_prompt"]
+        elif prompt_type == "cdk_modules":
+            prompt = config["cdk_modules_prompt"]
+        else:  # optimization
+            prompt = config["optimization_prompt"]
         
         # Bedrock request
         request_body = {
@@ -146,6 +151,19 @@ def handler(event, context):
                 return {'statusCode': 400}
             
             process_bedrock_request(connection_id, s3_key, 'cdk_modules', request_context)
+            
+        elif action == 'optimize':
+            # Get S3 key for image
+            s3_key = body.get('s3Key')
+            
+            if not s3_key:
+                send_message(connection_id, {
+                    'type': 'error',
+                    'message': 'S3 key is required'
+                }, request_context)
+                return {'statusCode': 400}
+            
+            process_bedrock_request(connection_id, s3_key, 'optimization', request_context)
                     
         else:
             send_message(connection_id, {

@@ -22,7 +22,7 @@ import { OptionDefinition } from "@cloudscape-design/components/internal/compone
 
 
 function App() {
-    const [perplexityResponse, setPerplexityResponse] = useState<string>('')
+    const [analysisResponse, setAnalysisResponse] = useState<string>('')
     const [cdkModulesResponse, setCdkModulesResponse] = useState<string>('')
     const [inProgress, setInProgress] = useState(false)
     const [imageData, setImageData] = useState<string | undefined>()
@@ -137,7 +137,7 @@ function App() {
     const handleWebSocketMessage = (message: any) => {
         switch (message.type) {
             case 'analysis_stream':
-                setPerplexityResponse(prev => prev + message.content);
+                setAnalysisResponse(prev => prev + message.content);
                 break;
 
             case 'cdk_modules_stream':
@@ -154,8 +154,20 @@ function App() {
                     onDismiss: () => setFlashbarItems([])
                 }]);
                 break;
+            case 'optimization_stream':
+                setAnalysisResponse(prev => prev + message.content);
+                break;
+            case 'optimization_complete':
+                setOptimizeInProgress(false);
+                setFlashbarItems([{
+                    type: "success",
+                    content: "Optimization completed",
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+                break;
             case 'stream':
-                setPerplexityResponse(prev => prev + message.content);
+                setAnalysisResponse(prev => prev + message.content);
                 break;
             case 'complete':
                 setInProgress(false);
@@ -189,6 +201,31 @@ function App() {
         );
     }
 
+    async function ensureImageUploaded() {
+        if (currentS3Key) return currentS3Key;
+        
+        const base64Data = imageData?.split(",")?.[1];
+        const imageBlob = new Blob([Uint8Array.from(atob(base64Data!), c => c.charCodeAt(0))], { type: imageFile[0].type });
+        const timestamp = Date.now();
+        const s3Key = `websocket-uploads/${timestamp}-${fileName}`;
+        
+        const origin = window.location.origin;
+        const presignedResponse = await fetch(`${origin}/api/presigned-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: s3Key, contentType: imageFile[0].type })
+        });
+        const { uploadUrl } = await presignedResponse.json();
+        await fetch(uploadUrl, {
+            method: 'PUT',
+            body: imageBlob,
+            headers: { 'Content-Type': imageFile[0].type }
+        });
+        
+        setCurrentS3Key(s3Key);
+        return s3Key;
+    }
+
     async function onSubmit() {
         if (!imageData || !wsConnection || connectionStatus !== 'connected') {
             setFlashbarItems([{
@@ -202,7 +239,7 @@ function App() {
 
         try {
             setInProgress(true)
-            setPerplexityResponse('')
+            setAnalysisResponse('')
             setCdkModulesResponse('')
             setContentType('analysis')
 
@@ -211,28 +248,7 @@ function App() {
             setScanProgress(0)
             setScanPhase('vertical')
             
-            // Prepare upload data
-            const base64Data = imageData?.split(",")?.[1];
-            const imageBlob = new Blob([Uint8Array.from(atob(base64Data!), c => c.charCodeAt(0))], { type: imageFile[0].type });
-            const timestamp = Date.now();
-            const s3Key = `websocket-uploads/${timestamp}-${fileName}`;
-            setCurrentS3Key(s3Key);
-            
-            // Start upload and animation in parallel
-            const uploadPromise = (async () => {
-                const origin = window.location.origin;
-                const presignedResponse = await fetch(`${origin}/api/presigned-url`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ key: s3Key, contentType: imageFile[0].type })
-                });
-                const { uploadUrl } = await presignedResponse.json();
-                await fetch(uploadUrl, {
-                    method: 'PUT',
-                    body: imageBlob,
-                    headers: { 'Content-Type': imageFile[0].type }
-                });
-            })();
+            const uploadPromise = ensureImageUploaded();
             
             // Phase 1: Vertical scanning
             await new Promise(resolve => {
@@ -266,7 +282,7 @@ function App() {
             })
             
             // Wait for upload to complete
-            await uploadPromise;
+            const s3Key = await uploadPromise;
             
             // Send S3 key via WebSocket for analysis
             wsConnection.send(JSON.stringify({
@@ -275,11 +291,10 @@ function App() {
                 language: language?.value
             }));
             
-
-            
             console.log('Upload completed, stored S3 key:', s3Key);
 
             // Trigger Step Function for code generation (async)
+            const origin = window.location.origin;
             const apiUrl = origin + "/api";
             
             fetch(apiUrl, {
@@ -308,88 +323,32 @@ function App() {
     }
 
     async function onOptimize() {
-        if (!imageData) return;
-
-        try {
-            const start = new Date().getTime()
-            setOptimizeInProgress(true)
-            setPerplexityResponse('')
-            setContentType('optimization')
-
-            const PERPLEXITY_API_KEY = process.env.REACT_APP_PERPLEXITY_API_KEY;
-
-            const optimizePromise = fetch('https://api.perplexity.ai/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'text/event-stream'
-                },
-                body: JSON.stringify({
-                    model: "sonar-pro",
-                    stream: true,
-                    messages: [
-                        {
-                            role: "user",
-                            content: [
-                                { type: "text", text: "You are an expert AWS solutions architect. Analyze this AWS architecture diagram and provide specific optimization recommendations focusing on: 1) Cost optimization opportunities, 2) Security improvements, 3) Performance enhancements, 4) Scalability improvements, 5) Reliability and availability enhancements. For each recommendation, explain the current limitation and the specific AWS service or configuration change that would address it. Provide reference links to official AWS documentation at the end if relevant." },
-                                { type: "image_url", image_url: { url: imageData } }
-                            ]
-                        }
-                    ]
-                })
-            });
-
-            const optimizeResponse = await optimizePromise;
-            if (optimizeResponse.ok) {
-                const reader = optimizeResponse.body?.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-
-                if (reader) {
-                    let streamDone = false;
-                    while (!streamDone) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6).trim();
-                                if (data === '[DONE]') {
-                                    streamDone = true;
-                                    break;
-                                }
-
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    const content = parsed?.choices?.[0]?.delta?.content;
-                                    if (content) {
-                                        setPerplexityResponse(prev => prev + content);
-                                    }
-                                } catch (e) {
-                                    // Ignore parsing errors
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            const end = new Date().getTime()
+        if (!imageData || !wsConnection || connectionStatus !== 'connected') {
             setFlashbarItems([{
-                type: "success",
-                content: `Optimization analysis completed in ${(end - start) / 1000} seconds`,
+                type: "error",
+                content: "WebSocket not connected or no image selected. Please refresh and try again.",
                 dismissible: true,
                 onDismiss: () => setFlashbarItems([])
-            }])
+            }]);
+            return;
+        }
+
+        try {
+            setOptimizeInProgress(true)
+            setAnalysisResponse('')
+            setContentType('optimization')
+
+            const s3Key = await ensureImageUploaded();
+
+            // Send optimization request via WebSocket
+            wsConnection.send(JSON.stringify({
+                action: 'optimize',
+                s3Key: s3Key
+            }));
+
         } catch (e) {
             console.error(e);
             setFlashbarItems([{ type: "error", content: "Error optimizing architecture", dismissible: true, onDismiss: () => setFlashbarItems([]) }])
-        } finally {
             setOptimizeInProgress(false)
         }
     }
@@ -631,15 +590,15 @@ function App() {
                             </Container>
                         </SpaceBetween>
                         <Container>
-                            {contentType === 'analysis' && perplexityResponse && (
+                            {contentType === 'analysis' && analysisResponse && (
                                 <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>Architecture Summary</div>
                             )}
-                            {contentType === 'optimization' && perplexityResponse && (
+                            {contentType === 'optimization' && analysisResponse && (
                                 <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>Recommended Optimizations</div>
                             )}
-                            {!perplexityResponse && <div>Architecture analysis will appear here after processing</div>}
+                            {!analysisResponse && <div>Architecture analysis will appear here after processing</div>}
                             <Markdown>
-                                {perplexityResponse}
+                                {analysisResponse}
             </Markdown>
                         </Container>
                     </ColumnLayout>
