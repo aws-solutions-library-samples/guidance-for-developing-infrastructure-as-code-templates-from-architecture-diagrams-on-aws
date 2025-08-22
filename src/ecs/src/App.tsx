@@ -78,7 +78,7 @@ function App() {
 
     // WebSocket connection management
     useEffect(() => {
-        if (isAuthenticated && connectionStatus === 'disconnected') {
+        if (!isLoading) {
             connectWebSocket();
         }
         return () => {
@@ -86,7 +86,7 @@ function App() {
                 wsConnection.close();
             }
         };
-    }, [isAuthenticated, connectionStatus]);
+    }, [isLoading]);
 
     const connectWebSocket = () => {
         setConnectionStatus('connecting');
@@ -118,10 +118,8 @@ function App() {
             // Auto-reconnect after 3 seconds if not a normal closure
             if (event.code !== 1000 && isAuthenticated) {
                 setTimeout(() => {
-                    if (connectionStatus === 'disconnected') {
-                        console.log('Attempting to reconnect WebSocket...');
-                        connectWebSocket();
-                    }
+                    console.log('Attempting to reconnect WebSocket...');
+                    connectWebSocket();
                 }, 3000);
             }
         };
