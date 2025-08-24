@@ -14,7 +14,6 @@ interface Props extends cdk.StackProps {
   recipientEmailAddresses: string[];
   diagramStorageBucket: cdk.aws_s3.Bucket;
   codeOutputBucket: cdk.aws_s3.Bucket;
-  responderLambda?: lambda.Function;
   applicationQualifier: string;
 }
 
@@ -110,10 +109,6 @@ export class ProcessingStack extends cdk.Stack {
           message: sfn.TaskInput.fromText(sfn.JsonPath.stringAt('$.Payload.presigned_url')),
         })),
     });
-
-    if (props.responderLambda) {
-      stateMachine.grantStartExecution(props.responderLambda);
-    }
 
     // WebSocket Lambda functions
     const connectHandler = new lambda.Function(this, 'WebSocketConnect', {

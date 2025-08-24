@@ -90,7 +90,12 @@ function App() {
 
     const connectWebSocket = () => {
         setConnectionStatus('connecting');
-        const wsUrl = process.env.REACT_APP_WEBSOCKET_URL || 'wss://ogfotgvwra.execute-api.us-west-2.amazonaws.com/prod';
+        const wsUrl = (window as any).APP_CONFIG?.WEBSOCKET_URL;
+        if (!wsUrl) {
+            console.error('WebSocket URL not configured');
+            setConnectionStatus('disconnected');
+            return;
+        }
         console.log('Connecting to WebSocket:', wsUrl);
         const ws = new WebSocket(wsUrl);
         
@@ -316,13 +321,12 @@ function App() {
 
             // Trigger Step Function for code generation (async)
             const origin = window.location.origin;
-            const apiUrl = origin + "/api";
+            const stepFunctionUrl = origin + "/api/step-function";
             
-            fetch(apiUrl, {
+            fetch(stepFunctionUrl, {
                 body: JSON.stringify({
-                    s3Key: s3Key,
-                    mime: imageFile[0].type,
-                    language: language?.value,
+                    file_path: `s3://ACCOUNT_ID-a2c-diagramstorage-REGION/${s3Key}`,
+                    code_language: language?.value
                 }),
                 method: "POST",
                 credentials: "include",

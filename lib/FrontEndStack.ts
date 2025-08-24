@@ -34,12 +34,36 @@ export class FrontEndStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
-    // ===== Lambda for /api =====
-    this.responderLambda = new lambda.DockerImageFunction(this, 'webResponder', {
-      functionName: `${props.applicationQualifier}-web-responder`,
-      code: lambda.DockerImageCode.fromImageAsset('src/lambda-functions/web-responder'),
-      memorySize: 1024,
-      timeout: cdk.Duration.minutes(10),
+    // ===== Lambda for presigned URLs =====
+    this.responderLambda = new lambda.Function(this, 'presignedUrlHandler', {
+      functionName: `${props.applicationQualifier}-presigned-url`,
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('src/lambda-functions/presigned-url'),
+      timeout: cdk.Duration.minutes(5),
+      environment: {
+        ACCOUNT_ID: this.account,
+        REGION: this.region,
+      },
+      initialPolicy: [
+        new iam.PolicyStatement({
+          actions: ['s3:PutObject'],
+          resources: [`${props.diagramStorageBucket.bucketArn}/*`],
+        }),
+      ],
+    });
+    this.responderLambda.addPermission('AllowALBInvocation', {
+      principal: new iam.ServicePrincipal('elasticloadbalancing.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+    });
+
+    // ===== Lambda for Step Function invocation =====
+    const stepFunctionInvoker = new lambda.Function(this, 'stepFunctionInvoker', {
+      functionName: `${props.applicationQualifier}-step-function-invoker`,
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('src/lambda-functions/step-function-invoker'),
+      timeout: cdk.Duration.minutes(5),
       environment: {
         ACCOUNT_ID: this.account,
         REGION: this.region,
@@ -47,27 +71,12 @@ export class FrontEndStack extends cdk.Stack {
       },
       initialPolicy: [
         new iam.PolicyStatement({
-          actions: ['cloudwatch:PutMetricData'],
-          resources: ['*'],
-        }),
-        new iam.PolicyStatement({
-          actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'], 
-          resources: ['*'],
-        }),
-        new iam.PolicyStatement({
-          actions: ['s3:GetObject', 's3:PutObject', 's3:ListBucket'],
-          resources: [
-            props.diagramStorageBucket.bucketArn,
-            `${props.diagramStorageBucket.bucketArn}/*`
-          ],
-        }),
-        new iam.PolicyStatement({
-          actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-          resources: ['*'],
+          actions: ['states:StartExecution'],
+          resources: [`arn:aws:states:${this.region}:${this.account}:stateMachine:${props.applicationQualifier}-Processing`],
         }),
       ],
     });
-    this.responderLambda.addPermission('AllowALBInvocation', {
+    stepFunctionInvoker.addPermission('AllowALBInvocation', {
       principal: new iam.ServicePrincipal('elasticloadbalancing.amazonaws.com'),
       action: 'lambda:InvokeFunction',
     });
@@ -134,13 +143,26 @@ export class FrontEndStack extends cdk.Stack {
     cfnLoadBalancer.securityGroups = [albSecurityGroup.securityGroupId];
 
     // Forward /api requests to Lambda, static to Fargate
-    const lambdaTargetGroup = new elbv2.ApplicationTargetGroup(this, 'LambdaTargetGroup', {
+    const presignedUrlTargetGroup = new elbv2.ApplicationTargetGroup(this, 'PresignedUrlTargetGroup', {
       targetType: elbv2.TargetType.LAMBDA,
       vpc: this.cluster.vpc,
       targets: [new targets.LambdaTarget(this.responderLambda)]
     });
-    const cfnTargetGroup = lambdaTargetGroup.node.defaultChild as elbv2.CfnTargetGroup;
-    cfnTargetGroup.targetGroupAttributes = [
+    const cfnPresignedTargetGroup = presignedUrlTargetGroup.node.defaultChild as elbv2.CfnTargetGroup;
+    cfnPresignedTargetGroup.targetGroupAttributes = [
+      {
+        key: 'lambda.multi_value_headers.enabled',
+        value: 'true'
+      }
+    ];
+
+    const stepFunctionTargetGroup = new elbv2.ApplicationTargetGroup(this, 'StepFunctionTargetGroup', {
+      targetType: elbv2.TargetType.LAMBDA,
+      vpc: this.cluster.vpc,
+      targets: [new targets.LambdaTarget(stepFunctionInvoker)]
+    });
+    const cfnStepFunctionTargetGroup = stepFunctionTargetGroup.node.defaultChild as elbv2.CfnTargetGroup;
+    cfnStepFunctionTargetGroup.targetGroupAttributes = [
       {
         key: 'lambda.multi_value_headers.enabled',
         value: 'true'
@@ -153,15 +175,20 @@ export class FrontEndStack extends cdk.Stack {
       conditions: [elbv2.ListenerCondition.pathPatterns(['/'])],
       priority: 1
     });
-    this.service.listener.addAction('LambdaInvoke', {
-      action: elbv2.ListenerAction.forward([lambdaTargetGroup]),
-      conditions: [elbv2.ListenerCondition.pathPatterns(['/api', '/api/*']), elbv2.ListenerCondition.httpRequestMethods(['POST'])],
+    this.service.listener.addAction('PresignedUrlRoute', {
+      action: elbv2.ListenerAction.forward([presignedUrlTargetGroup]),
+      conditions: [elbv2.ListenerCondition.pathPatterns(['/api/presigned-url']), elbv2.ListenerCondition.httpRequestMethods(['POST', 'OPTIONS'])],
       priority: 2
+    });
+    this.service.listener.addAction('StepFunctionRoute', {
+      action: elbv2.ListenerAction.forward([stepFunctionTargetGroup]),
+      conditions: [elbv2.ListenerCondition.pathPatterns(['/api/step-function']), elbv2.ListenerCondition.httpRequestMethods(['POST', 'OPTIONS'])],
+      priority: 3
     });
     this.service.listener.addAction('StaticContent', {
       action: elbv2.ListenerAction.forward([this.service.targetGroup]),
       conditions: [elbv2.ListenerCondition.pathPatterns(['/*'])],
-      priority: 3
+      priority: 4
     });
 
     // ===== Lambda@Edge ====
@@ -284,6 +311,10 @@ export class FrontEndStack extends cdk.Stack {
     if (props.webSocketUrl) {
       this.service.taskDefinition.defaultContainer?.addEnvironment('REACT_APP_WEBSOCKET_URL', props.webSocketUrl);
     }
+    
+    // Add AWS account ID and region for S3 bucket name construction
+    this.service.taskDefinition.defaultContainer?.addEnvironment('AWS_ACCOUNT_ID', this.account);
+    this.service.taskDefinition.defaultContainer?.addEnvironment('AWS_REGION', this.region);
 
     // ===== Output URLs and UserPool IDs =====
     new cdk.CfnOutput(this, 'CloudFrontUrl', {
@@ -298,6 +329,10 @@ export class FrontEndStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, 'CognitoUserPoolDomain', {
       value: `${this.userPoolDomain.domainName}.auth.${this.region}.amazoncognito.com`,
+    });
+    new cdk.CfnOutput(this, 'WebSocketUrl', {
+      value: props.webSocketUrl || 'Not provided',
+      description: 'WebSocket API URL for real-time communication'
     });
   }
 }
