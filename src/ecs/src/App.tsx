@@ -147,6 +147,7 @@ function App() {
                 if (!analysisStartTime) {
                     setAnalysisStartTime(Date.now());
                 }
+                setThinkingResponse(''); // Clear thinking when analysis starts
                 setAnalysisResponse(prev => prev + message.content);
                 break;
             case 'thinking_stream':
@@ -157,19 +158,19 @@ function App() {
                 break;
             case 'cdk_modules_stream':
                 console.log('Received CDK modules stream:', message.content);
+                setThinkingResponse(''); // Clear thinking when CDK modules starts
                 setCdkModulesResponse(prev => prev + message.content);
                 break;
             case 'cdk_modules_complete':
                 setCdkModulesComplete(true);
-                setThinkingResponse('');
                 checkBothComplete();
                 break;
             case 'optimization_stream':
+                setThinkingResponse(''); // Clear thinking when optimization starts
                 setAnalysisResponse(prev => prev + message.content);
                 break;
             case 'optimization_complete':
                 setOptimizeInProgress(false);
-                setThinkingResponse('');
                 setFlashbarItems([{
                     type: "success",
                     content: "Optimization completed",
@@ -178,17 +179,21 @@ function App() {
                 }]);
                 break;
             case 'stream':
+                setThinkingResponse(''); // Clear thinking when stream starts
                 setAnalysisResponse(prev => prev + message.content);
                 break;
             case 'complete':
                 setAnalysisComplete(true);
-                setThinkingResponse('');
                 checkBothComplete();
                 break;
             case 'code_ready':
                 setFlashbarItems([{
                     type: "success",
-                    content: message.message,
+                    content: (
+                        <span>
+                            {message.message} <a href={message.downloadUrl} target="_blank" rel="noopener noreferrer" style={{color: '#ffffff', textDecoration: 'underline', fontWeight: 'bold'}}>{message.downloadText}</a>
+                        </span>
+                    ),
                     dismissible: true,
                     onDismiss: () => setFlashbarItems([])
                 }]);

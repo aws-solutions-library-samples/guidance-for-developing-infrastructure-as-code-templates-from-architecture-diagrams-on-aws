@@ -311,7 +311,9 @@ async def send_websocket_notification(presigned_url):
         # Prepare message
         message = {
             'type': 'code_ready',
-            'message': f'Your code is ready! Click to download: {presigned_url}'
+            'message': 'Your code is ready!',
+            'downloadUrl': presigned_url,
+            'downloadText': 'Click here to download'
         }
         
         # Send message to all connections
