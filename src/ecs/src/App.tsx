@@ -154,9 +154,11 @@ function App() {
                 break;
             case 'thinking_stream':
             case 'analysis_thinking_stream':
-            case 'cdk_modules_thinking_stream':
             case 'optimization_thinking_stream':
                 setThinkingResponse(prev => prev + message.content);
+                break;
+            case 'cdk_modules_thinking_stream':
+                // Don't show thinking for CDK modules
                 break;
             case 'cdk_modules_stream':
                 console.log('Received CDK modules stream:', message.content);
@@ -220,6 +222,7 @@ function App() {
     };
 
     const checkBothComplete = () => {
+        console.log('Checking completion:', { analysisComplete, cdkModulesComplete, analysisStartTime });
         setTimeout(() => {
             if (analysisComplete && cdkModulesComplete && analysisStartTime) {
                 const duration = ((Date.now() - analysisStartTime) / 1000).toFixed(2);
