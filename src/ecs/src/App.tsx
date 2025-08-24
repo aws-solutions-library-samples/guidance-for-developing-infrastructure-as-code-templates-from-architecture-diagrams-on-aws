@@ -249,8 +249,12 @@ function App() {
         
         const base64Data = imageData?.split(",")?.[1];
         const imageBlob = new Blob([Uint8Array.from(atob(base64Data!), c => c.charCodeAt(0))], { type: imageFile[0].type });
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
         const timestamp = Date.now();
-        const s3Key = `websocket-uploads/${timestamp}-${fileName}`;
+        const s3Key = `${year}/${month}/${day}/${timestamp}-${fileName}`;
         
         const origin = window.location.origin;
         const presignedResponse = await fetch(`${origin}/api/presigned-url`, {
