@@ -16,7 +16,6 @@ const storageStack = new StorageStack(app, `${AppConfig.applicationName}-Storage
 
 const processingStack = new ProcessingStack(app, `${AppConfig.applicationName}-ProcessingStack`, {
   env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
-  recipientEmailAddresses: [],
   diagramStorageBucket: storageStack.diagramStorageBucket,
   codeOutputBucket: storageStack.codeOutputBucket,
   applicationQualifier: AppConfig.applicationQualifier,

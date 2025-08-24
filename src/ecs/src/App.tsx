@@ -185,6 +185,14 @@ function App() {
                 setThinkingResponse('');
                 checkBothComplete();
                 break;
+            case 'code_ready':
+                setFlashbarItems([{
+                    type: "success",
+                    content: message.message,
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+                break;
             case 'error':
                 setInProgress(false);
                 setIsScanning(false);
