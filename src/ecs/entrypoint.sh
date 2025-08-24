@@ -1,12 +1,27 @@
-# Replace environment variables in the index.html file
-# envsubst '${REACT_APP_API_URL}' < /usr/share/nginx/html/index.html > /usr/share/nginx/html/index.html.tmp
-# mv /usr/share/nginx/html/index.html.tmp /usr/share/nginx/html/index.html
+#!/bin/sh
 
-# envsubst '${REACT_APP_S3_BUCKET_NAME}' < /etc/nginx/conf.d/default.conf > /etc/nginx/conf.d/default.conf.tmp
-# mv /etc/nginx/conf.d/default.conf.tmp /etc/nginx/conf.d/default.conf
+# Create config.js file with WebSocket URL
+if [ -n "$REACT_APP_WEBSOCKET_URL" ]; then
+    echo "Creating config with WebSocket URL: $REACT_APP_WEBSOCKET_URL"
+    cat > /usr/share/nginx/html/config.js << EOF
+window.APP_CONFIG = {
+  WEBSOCKET_URL: '$REACT_APP_WEBSOCKET_URL'
+};
+EOF
+else
+    echo "Warning: REACT_APP_WEBSOCKET_URL not set"
+    cat > /usr/share/nginx/html/config.js << EOF
+window.APP_CONFIG = {
+  WEBSOCKET_URL: ''
+};
+EOF
+fi
 
-# envsubst '${REACT_APP_REGION}' < /etc/nginx/conf.d/default.conf > /etc/nginx/conf.d/default.conf.tmp
-# mv /etc/nginx/conf.d/default.conf.tmp /etc/nginx/conf.d/default.conf
+# Replace S3 bucket placeholders in JS files
+if [ -n "$AWS_ACCOUNT_ID" ] && [ -n "$AWS_REGION" ]; then
+    echo "Injecting S3 bucket info: Account $AWS_ACCOUNT_ID, Region $AWS_REGION"
+    find /usr/share/nginx/html/static/js -name "*.js" -exec sed -i "s|ACCOUNT_ID-a2c-diagramstorage-REGION|$AWS_ACCOUNT_ID-a2c-diagramstorage-$AWS_REGION|g" {} \;
+fi
 
 # Start Nginx
 exec "$@"

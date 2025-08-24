@@ -14,19 +14,18 @@ const storageStack = new StorageStack(app, `${AppConfig.applicationName}-Storage
   applicationQualifier: AppConfig.applicationQualifier,
 });
 
+const processingStack = new ProcessingStack(app, `${AppConfig.applicationName}-ProcessingStack`, {
+  env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
+  diagramStorageBucket: storageStack.diagramStorageBucket,
+  codeOutputBucket: storageStack.codeOutputBucket,
+  applicationQualifier: AppConfig.applicationQualifier,
+});
+
 const frontEndStack = new FrontEndStack(app, `${AppConfig.applicationName}-FrontEndStack`, {
   env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
   diagramStorageBucket: storageStack.diagramStorageBucket,
   applicationQualifier: AppConfig.applicationQualifier,
-});
-
-new ProcessingStack(app, `${AppConfig.applicationName}-ProcessingStack`, {
-  env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
-  recipientEmailAddresses: [],
-  diagramStorageBucket: storageStack.diagramStorageBucket,
-  codeOutputBucket: storageStack.codeOutputBucket,
-  responderLambda: frontEndStack.responderLambda,
-  applicationQualifier: AppConfig.applicationQualifier,
+  webSocketUrl: `wss://${processingStack.webSocketApi.apiId}.execute-api.${AppConfig.region}.amazonaws.com/prod`,
 });
 
 // Add CDK Nag checks

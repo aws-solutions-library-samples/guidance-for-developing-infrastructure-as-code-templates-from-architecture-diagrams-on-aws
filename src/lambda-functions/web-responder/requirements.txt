@@ -1,5 +1,0 @@
-boto3
-botocore
-urllib3
-pybase64
-pyyaml

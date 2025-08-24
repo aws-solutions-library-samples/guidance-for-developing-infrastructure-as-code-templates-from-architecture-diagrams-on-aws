@@ -22,8 +22,9 @@ import { OptionDefinition } from "@cloudscape-design/components/internal/compone
 
 
 function App() {
-    const [perplexityResponse, setPerplexityResponse] = useState<string>('')
+    const [analysisResponse, setAnalysisResponse] = useState<string>('')
     const [cdkModulesResponse, setCdkModulesResponse] = useState<string>('')
+    const [thinkingResponse, setThinkingResponse] = useState<string>('')
     const [inProgress, setInProgress] = useState(false)
     const [imageData, setImageData] = useState<string | undefined>()
     const [imageFile, setImageFile] = useState<File[]>([])
@@ -39,6 +40,14 @@ function App() {
     const [currentPage, setCurrentPage] = useState('home')
     const [optimizeInProgress, setOptimizeInProgress] = useState(false)
     const [contentType, setContentType] = useState<'analysis' | 'optimization' | null>(null)
+    const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
+    const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
+    const [currentS3Key, setCurrentS3Key] = useState<string | null>(null)
+    const [analysisStartTime, setAnalysisStartTime] = useState<number | null>(null)
+    const [analysisComplete, setAnalysisComplete] = useState(false)
+    const [cdkModulesComplete, setCdkModulesComplete] = useState(false)
+    const [codeSynthesisProgress, setCodeSynthesisProgress] = useState(0)
+    const [isCodeSynthesizing, setIsCodeSynthesizing] = useState(false)
 
     useEffect(() => {
         console.log('App useEffect running');
@@ -69,6 +78,163 @@ function App() {
         setIsLoading(false);
     }, []);
 
+    // WebSocket connection management
+    useEffect(() => {
+        if (!isLoading) {
+            connectWebSocket();
+        }
+        return () => {
+            if (wsConnection) {
+                wsConnection.close();
+            }
+        };
+    }, [isLoading]);
+
+    const connectWebSocket = () => {
+        setConnectionStatus('connecting');
+        const wsUrl = (window as any).APP_CONFIG?.WEBSOCKET_URL;
+        if (!wsUrl) {
+            console.error('WebSocket URL not configured');
+            setConnectionStatus('disconnected');
+            return;
+        }
+        console.log('Connecting to WebSocket:', wsUrl);
+        const ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+            console.log('WebSocket connected successfully');
+            setConnectionStatus('connected');
+            setWsConnection(ws);
+        };
+        
+        ws.onmessage = (event) => {
+            //console.log('WebSocket message received:', event.data);
+            try {
+                const message = JSON.parse(event.data);
+                handleWebSocketMessage(message);
+            } catch (e) {
+                console.error('Error parsing WebSocket message:', e);
+            }
+        };
+        
+        ws.onclose = (event) => {
+            console.log('WebSocket disconnected:', event.code, event.reason);
+            setConnectionStatus('disconnected');
+            setWsConnection(null);
+            
+            // Auto-reconnect after 3 seconds if not a normal closure
+            if (event.code !== 1000 && isAuthenticated) {
+                setTimeout(() => {
+                    console.log('Attempting to reconnect WebSocket...');
+                    connectWebSocket();
+                }, 3000);
+            }
+        };
+        
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            setConnectionStatus('disconnected');
+            setFlashbarItems([{
+                type: "error",
+                content: "WebSocket connection failed. Please check your network connection.",
+                dismissible: true,
+                onDismiss: () => setFlashbarItems([])
+            }]);
+        };
+    };
+
+    const handleWebSocketMessage = (message: any) => {
+        switch (message.type) {
+            case 'analysis_stream':
+                if (!analysisStartTime) {
+                    setAnalysisStartTime(Date.now());
+                }
+                setThinkingResponse(''); // Clear thinking when analysis starts
+                setAnalysisResponse(prev => prev + message.content);
+                break;
+            case 'thinking_stream':
+            case 'analysis_thinking_stream':
+            case 'cdk_modules_thinking_stream':
+            case 'optimization_thinking_stream':
+                setThinkingResponse(prev => prev + message.content);
+                break;
+            case 'cdk_modules_stream':
+                console.log('Received CDK modules stream:', message.content);
+                setThinkingResponse(''); // Clear thinking when CDK modules starts
+                setCdkModulesResponse(prev => prev + message.content);
+                break;
+            case 'cdk_modules_complete':
+                setCdkModulesComplete(true);
+                checkBothComplete();
+                break;
+            case 'optimization_stream':
+                setThinkingResponse(''); // Clear thinking when optimization starts
+                setAnalysisResponse(prev => prev + message.content);
+                break;
+            case 'optimization_complete':
+                setOptimizeInProgress(false);
+                setFlashbarItems([{
+                    type: "success",
+                    content: "Optimization completed",
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+                break;
+            case 'stream':
+                setThinkingResponse(''); // Clear thinking when stream starts
+                setAnalysisResponse(prev => prev + message.content);
+                break;
+            case 'complete':
+                setAnalysisComplete(true);
+                checkBothComplete();
+                break;
+            case 'synthesis_progress':
+                setIsScanning(false); // Hide scanning when synthesis starts
+                setCodeSynthesisProgress(message.progress);
+                break;
+            case 'code_ready':
+                setIsCodeSynthesizing(false);
+                setCodeSynthesisProgress(0);
+                setFlashbarItems([{
+                    type: "success",
+                    content: (
+                        <span>
+                            {message.message} <a href={message.downloadUrl} target="_blank" rel="noopener noreferrer" style={{color: '#ffffff', textDecoration: 'underline', fontWeight: 'bold'}}>{message.downloadText}</a>
+                        </span>
+                    ),
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+                break;
+            case 'error':
+                setInProgress(false);
+                setIsScanning(false);
+                setFlashbarItems([{
+                    type: "error",
+                    content: `Error: ${message.message}`,
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+                break;
+        }
+    };
+
+    const checkBothComplete = () => {
+        setTimeout(() => {
+            if (analysisComplete && cdkModulesComplete && analysisStartTime) {
+                const duration = ((Date.now() - analysisStartTime) / 1000).toFixed(2);
+                setInProgress(false);
+                setIsScanning(false);
+                setFlashbarItems([{
+                    type: "success",
+                    content: `Analysis complete in ${duration} seconds`,
+                    dismissible: true,
+                    onDismiss: () => setFlashbarItems([])
+                }]);
+            }
+        }, 100);
+    };
+
     // Show loading state while checking authentication
     if (isLoading) {
         return (
@@ -78,20 +244,58 @@ function App() {
         );
     }
 
+    async function ensureImageUploaded() {
+        if (currentS3Key) return currentS3Key;
+        
+        const base64Data = imageData?.split(",")?.[1];
+        const imageBlob = new Blob([Uint8Array.from(atob(base64Data!), c => c.charCodeAt(0))], { type: imageFile[0].type });
+        const timestamp = Date.now();
+        const s3Key = `websocket-uploads/${timestamp}-${fileName}`;
+        
+        const origin = window.location.origin;
+        const presignedResponse = await fetch(`${origin}/api/presigned-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: s3Key, contentType: imageFile[0].type })
+        });
+        const { uploadUrl } = await presignedResponse.json();
+        await fetch(uploadUrl, {
+            method: 'PUT',
+            body: imageBlob,
+            headers: { 'Content-Type': imageFile[0].type }
+        });
+        
+        setCurrentS3Key(s3Key);
+        return s3Key;
+    }
+
     async function onSubmit() {
-        if (!imageData) return;
+        if (!imageData || !wsConnection || connectionStatus !== 'connected') {
+            setFlashbarItems([{
+                type: "error",
+                content: "WebSocket not connected. Please refresh the page.",
+                dismissible: true,
+                onDismiss: () => setFlashbarItems([])
+            }]);
+            return;
+        }
 
         try {
-            const start = new Date().getTime()
             setInProgress(true)
-            setPerplexityResponse('')
+            setAnalysisResponse('')
             setCdkModulesResponse('')
+            setThinkingResponse('')
             setContentType('analysis')
+            setAnalysisStartTime(null)
+            setAnalysisComplete(false)
+            setCdkModulesComplete(false)
 
-            // Start the scanning animation
+            // Start the scanning animation and upload simultaneously
             setIsScanning(true)
             setScanProgress(0)
             setScanPhase('vertical')
+            
+            const uploadPromise = ensureImageUploaded();
             
             // Phase 1: Vertical scanning
             await new Promise(resolve => {
@@ -116,7 +320,6 @@ function App() {
                     setScanProgress(prev => {
                         if (prev >= 100) {
                             clearInterval(horizontalInterval)
-                            setIsScanning(false)
                             resolve(void 0)
                             return 100
                         }
@@ -124,262 +327,71 @@ function App() {
                     })
                 }, 100)
             })
+            
+            // Wait for upload to complete
+            const s3Key = await uploadPromise;
+            
+            // Send S3 key via WebSocket for analysis
+            wsConnection.send(JSON.stringify({
+                action: 'analyze',
+                s3Key: s3Key,
+                language: language?.value
+            }));
+            
+            console.log('Upload completed, stored S3 key:', s3Key);
 
-            // Call web responder lambda
+            // Trigger Step Function for code generation (async)
             const origin = window.location.origin;
-            const apiUrl = origin + "/api";
-
-            const lambdaPromise = fetch(
-                apiUrl,
-                {
-                    body: JSON.stringify({
-                        imageData: imageData?.split(",")?.[1],
-                        mime: imageFile[0].type,
-                        language: language?.value,
-                    }),
-                    method: "POST",
-                    credentials: "include",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
-
-            // Call Perplexity API for streaming response
-            const PERPLEXITY_API_KEY = process.env.REACT_APP_PERPLEXITY_API_KEY;
-
-            const perplexityPromise = fetch('https://api.perplexity.ai/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'text/event-stream'
-                },
-                body: JSON.stringify({
-                    model: "sonar-pro",
-                    stream: true,
-                    messages: [
-                        {
-                            role: "user",
-                            content: [
-                                { type: "text", text: "You are an expert AWS solutions architect and cloud infrastructure specialist with deep knowledge of AWS services, best practices, and the AWS Cloud Development Kit (CDK). Your task is to analyze the attached AWS architecture diagram and provide detailed, structured descriptions that can be used by other AI systems to generate deployable AWS CDK code.You have the following capabilities and traits:1.AWS Expertise: You have comprehensive knowledge of all AWS services, their configurations, and how they interact within complex architectures.2.Diagram Analysis: You can quickly interpret and understand AWS architecture diagrams, identifying all components and their relationships.3.Detail-Oriented: You provide thorough, specific descriptions of each component, including resource names, settings, and configuration details crucial for CDK implementation.4.Best Practices: You understand and can explain AWS best practices for security, scalability, and cost optimization.5.CDK-Focused: Your descriptions are structured in a way that aligns with AWS CDK constructs and patterns, facilitating easy code generation.6.Clear Communication: You explain complex architectures in a clear, logical manner that both humans and AI systems can understand and act upon.7.Holistic Understanding: You grasp not just individual components, but also the overall system purpose, data flow, and integration points. Your goal is to create a description that serves as a comprehensive blueprint for CDK code generation.What use case it is trying to address? Evaluate the complexity level of this architecture as level 1 or level 2 or level 3 based on the definitions described here: Level 1 : less than or equals to 4 different types of AWS services are used in the architecture diagram. Level 2 : 5 to 10 different types of AWS services are used in the architecture diagram. Level 3 : more than 10 different types of AWS services are used in the architecture diagram.At the end of your response include a numbered list of AWS resources along with their counts and names. For example, say  Resources summary: 1. 'N' s3 buckets A, , B , C 2. 'N' lambda functions A B  etc. and so on for all services present in the architecture diagram" },
-                                { type: "image_url", image_url: { url: imageData } }
-                            ]
-                        }
-                    ]
-                })
-            });
-
-            // Process Perplexity streaming response
-            const perplexityResponse = await perplexityPromise;
-            if (perplexityResponse.ok) {
-                const reader = perplexityResponse.body?.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-
-                if (reader) {
-                    let streamDone = false;
-                    while (!streamDone) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6).trim();
-                                if (data === '[DONE]') {
-                                    streamDone = true;
-                                    break;
-                                }
-
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    const content = parsed?.choices?.[0]?.delta?.content;
-                                    if (content) {
-                                        setPerplexityResponse(prev => prev + content);
-                                    }
-                                } catch (e) {
-                                    // Ignore parsing errors
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Wait for lambda response (but don't display it)
-            await lambdaPromise;
+            const stepFunctionUrl = origin + "/api/step-function";
             
-            // Make second Perplexity API call for CDK modules breakdown
-            setCdkModulesResponse('');
-            const cdkModulesPromise = fetch('https://api.perplexity.ai/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'text/event-stream'
-                },
+            fetch(stepFunctionUrl, {
                 body: JSON.stringify({
-                    model: "sonar-pro",
-                    stream: true,
-                    messages: [
-                        {
-                            role: "user",
-                            content: [
-                                { type: "text", text: "Based on this AWS architecture diagram, list what AWS resources each module should contain if you were developing an AWS CDK project based upon it. Provide only the module names and associated resources." },
-                                { type: "image_url", image_url: { url: imageData } }
-                            ]
-                        }
-                    ]
-                })
-            });
-            
-            // Process CDK modules streaming response
-            const cdkModulesApiResponse = await cdkModulesPromise;
-            if (cdkModulesApiResponse.ok) {
-                const reader = cdkModulesApiResponse.body?.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-                
-                if (reader) {
-                    let streamDone = false;
-                    while (!streamDone) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-                        
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6).trim();
-                                if (data === '[DONE]') {
-                                    streamDone = true;
-                                    break;
-                                }
-                                
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    const content = parsed?.choices?.[0]?.delta?.content;
-                                    if (content) {
-                                        setCdkModulesResponse(prev => prev + content);
-                                    }
-                                } catch (e) {
-                                    // Ignore parsing errors
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            const end = new Date().getTime()
-            setFlashbarItems([{
-                type: "success",
-                content: `Analysis completed in ${(end - start) / 1000} seconds`,
-                dismissible: true,
-                onDismiss: () => setFlashbarItems([])
-            }, {
-                type: "info",
-                content: "Code synthesis initiated",
-                dismissible: true,
-                onDismiss: () => setFlashbarItems([])
-            }])
+                    file_path: `s3://ACCOUNT_ID-a2c-diagramstorage-REGION/${s3Key}`,
+                    code_language: language?.value
+                }),
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }).then(() => {
+                setIsCodeSynthesizing(true);
+                setCodeSynthesisProgress(0);
+            }).catch(console.error);
         } catch (e) {
             console.error(e);
             setFlashbarItems([{ type: "error", content: "Error analyzing architecture", dismissible: true, onDismiss: () => setFlashbarItems([]) }])
-        } finally {
-            setInProgress(false)
         }
     }
 
     async function onOptimize() {
-        if (!imageData) return;
-
-        try {
-            const start = new Date().getTime()
-            setOptimizeInProgress(true)
-            setPerplexityResponse('')
-            setContentType('optimization')
-
-            const PERPLEXITY_API_KEY = process.env.REACT_APP_PERPLEXITY_API_KEY;
-
-            const optimizePromise = fetch('https://api.perplexity.ai/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'text/event-stream'
-                },
-                body: JSON.stringify({
-                    model: "sonar-pro",
-                    stream: true,
-                    messages: [
-                        {
-                            role: "user",
-                            content: [
-                                { type: "text", text: "You are an expert AWS solutions architect. Analyze this AWS architecture diagram and provide specific optimization recommendations focusing on: 1) Cost optimization opportunities, 2) Security improvements, 3) Performance enhancements, 4) Scalability improvements, 5) Reliability and availability enhancements. For each recommendation, explain the current limitation and the specific AWS service or configuration change that would address it. Provide reference links to official AWS documentation at the end if relevant." },
-                                { type: "image_url", image_url: { url: imageData } }
-                            ]
-                        }
-                    ]
-                })
-            });
-
-            const optimizeResponse = await optimizePromise;
-            if (optimizeResponse.ok) {
-                const reader = optimizeResponse.body?.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-
-                if (reader) {
-                    let streamDone = false;
-                    while (!streamDone) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6).trim();
-                                if (data === '[DONE]') {
-                                    streamDone = true;
-                                    break;
-                                }
-
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    const content = parsed?.choices?.[0]?.delta?.content;
-                                    if (content) {
-                                        setPerplexityResponse(prev => prev + content);
-                                    }
-                                } catch (e) {
-                                    // Ignore parsing errors
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            const end = new Date().getTime()
+        if (!imageData || !wsConnection || connectionStatus !== 'connected') {
             setFlashbarItems([{
-                type: "success",
-                content: `Optimization analysis completed in ${(end - start) / 1000} seconds`,
+                type: "error",
+                content: "WebSocket not connected or no image selected. Please refresh and try again.",
                 dismissible: true,
                 onDismiss: () => setFlashbarItems([])
-            }])
+            }]);
+            return;
+        }
+
+        try {
+            setOptimizeInProgress(true)
+            setAnalysisResponse('')
+            setThinkingResponse('')
+            setContentType('optimization')
+
+            const s3Key = await ensureImageUploaded();
+
+            // Send optimization request via WebSocket
+            wsConnection.send(JSON.stringify({
+                action: 'optimize',
+                s3Key: s3Key
+            }));
+
         } catch (e) {
             console.error(e);
             setFlashbarItems([{ type: "error", content: "Error optimizing architecture", dismissible: true, onDismiss: () => setFlashbarItems([]) }])
-        } finally {
             setOptimizeInProgress(false)
         }
     }
@@ -479,6 +491,31 @@ function App() {
                 </div>
             </div>
         )}
+        {isCodeSynthesizing && (
+            <div style={{ marginTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                        Synthesizing code...
+                    </span>
+                    <span style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '500', 
+                        color: '#8b5cf6' 
+                    }}>
+                        {Math.round(codeSynthesisProgress)}%
+                    </span>
+                </div>
+                <div style={{ width: '100%', backgroundColor: '#e5e7eb', borderRadius: '9999px', height: '8px' }}>
+                    <div style={{
+                        height: '8px',
+                        borderRadius: '9999px',
+                        transition: 'width 0.3s ease',
+                        background: 'linear-gradient(to right, #8b5cf6, #a855f7)',
+                        width: `${codeSynthesisProgress}%`
+                    }} />
+                </div>
+            </div>
+        )}
     </SpaceBetween>;
 
     const HowToUsePage = () => (
@@ -565,8 +602,8 @@ function App() {
                                     <FormField>
                                         <SpaceBetween direction="horizontal" size="s">
                                             <Button variant={"primary"}
-                                                disabled={!imageData?.length || !language || isScanning}
-                                                disabledReason={"Please select image and language"}
+                                                disabled={!imageData?.length || !language || isScanning || connectionStatus !== 'connected'}
+                                                disabledReason={connectionStatus !== 'connected' ? "WebSocket not connected" : "Please select image and language"}
                                                 onClick={x => onSubmit()}
                                                 loading={inProgress}
                                                 loadingText={isScanning ? "Scanning..." : "Generating"}>
@@ -582,6 +619,32 @@ function App() {
                                             </Button>
                                         </SpaceBetween>
                                     </FormField>
+                                    <FormField>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '8px',
+                                            padding: '8px',
+                                            backgroundColor: connectionStatus === 'connected' ? '#f0f9ff' : '#fef2f2',
+                                            borderRadius: '4px',
+                                            border: `1px solid ${connectionStatus === 'connected' ? '#0ea5e9' : '#ef4444'}`
+                                        }}>
+                                            <div style={{
+                                                width: '8px',
+                                                height: '8px',
+                                                borderRadius: '50%',
+                                                backgroundColor: connectionStatus === 'connected' ? '#22c55e' : 
+                                                               connectionStatus === 'connecting' ? '#f59e0b' : '#ef4444'
+                                            }} />
+                                            <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                                                WebSocket: {connectionStatus === 'connected' ? 'Connected' : 
+                                                          connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+                                            </span>
+                                            {connectionStatus === 'disconnected' && (
+                                                <Button onClick={connectWebSocket}>Reconnect</Button>
+                                            )}
+                                        </div>
+                                    </FormField>
                                 </SpaceBetween>
                             </Container>
                             <Container>
@@ -595,16 +658,24 @@ function App() {
                             </Container>
                         </SpaceBetween>
                         <Container>
-                            {contentType === 'analysis' && perplexityResponse && (
+                            {thinkingResponse && (
+                                <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                                    <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '14px', color: '#6c757d' }}>🤔 Thinking...</div>
+                                    <div style={{ fontSize: '13px', color: '#495057', fontStyle: 'italic' }}>
+                                        <Markdown>{thinkingResponse}</Markdown>
+                                    </div>
+                                </div>
+                            )}
+                            {contentType === 'analysis' && analysisResponse && (
                                 <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>Architecture Summary</div>
                             )}
-                            {contentType === 'optimization' && perplexityResponse && (
+                            {contentType === 'optimization' && analysisResponse && (
                                 <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>Recommended Optimizations</div>
                             )}
-                            {!perplexityResponse && <div>Architecture analysis will appear here after processing</div>}
+                            {!analysisResponse && !thinkingResponse && <div>Architecture analysis will appear here after processing</div>}
                             <Markdown>
-                                {perplexityResponse}
-                            </Markdown>
+                                {analysisResponse}
+            </Markdown>
                         </Container>
                     </ColumnLayout>
                 )

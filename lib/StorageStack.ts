@@ -25,6 +25,12 @@ export class StorageStack extends cdk.Stack {
       bucketName: `${this.account}-${props.applicationQualifier}-diagramstorage-${this.region}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      cors: [{
+        allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
+        allowedOrigins: ['*'],
+        allowedHeaders: ['*'],
+        maxAge: 3000
+      }]
     });
 
     // Create S3 bucket for generated CDK code
