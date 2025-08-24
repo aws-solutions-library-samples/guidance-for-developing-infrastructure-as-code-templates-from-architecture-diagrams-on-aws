@@ -46,6 +46,8 @@ function App() {
     const [analysisStartTime, setAnalysisStartTime] = useState<number | null>(null)
     const [analysisComplete, setAnalysisComplete] = useState(false)
     const [cdkModulesComplete, setCdkModulesComplete] = useState(false)
+    const [codeSynthesisProgress, setCodeSynthesisProgress] = useState(0)
+    const [isCodeSynthesizing, setIsCodeSynthesizing] = useState(false)
 
     useEffect(() => {
         console.log('App useEffect running');
@@ -186,7 +188,13 @@ function App() {
                 setAnalysisComplete(true);
                 checkBothComplete();
                 break;
+            case 'synthesis_progress':
+                setIsScanning(false); // Hide scanning when synthesis starts
+                setCodeSynthesisProgress(message.progress);
+                break;
             case 'code_ready':
+                setIsCodeSynthesizing(false);
+                setCodeSynthesisProgress(0);
                 setFlashbarItems([{
                     type: "success",
                     content: (
@@ -347,12 +355,8 @@ function App() {
                     "Content-Type": "application/json",
                 },
             }).then(() => {
-                setFlashbarItems(prev => [...prev, {
-                    type: "info",
-                    content: "Code synthesis initiated",
-                    dismissible: true,
-                    onDismiss: () => setFlashbarItems([])
-                }]);
+                setIsCodeSynthesizing(true);
+                setCodeSynthesisProgress(0);
             }).catch(console.error);
         } catch (e) {
             console.error(e);
@@ -483,6 +487,31 @@ function App() {
                             ? 'linear-gradient(to right, #3b82f6, #8b5cf6)'
                             : 'linear-gradient(to right, #22c55e, #10b981)',
                         width: `${scanProgress}%`
+                    }} />
+                </div>
+            </div>
+        )}
+        {isCodeSynthesizing && (
+            <div style={{ marginTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                        Synthesizing code...
+                    </span>
+                    <span style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '500', 
+                        color: '#8b5cf6' 
+                    }}>
+                        {Math.round(codeSynthesisProgress)}%
+                    </span>
+                </div>
+                <div style={{ width: '100%', backgroundColor: '#e5e7eb', borderRadius: '9999px', height: '8px' }}>
+                    <div style={{
+                        height: '8px',
+                        borderRadius: '9999px',
+                        transition: 'width 0.3s ease',
+                        background: 'linear-gradient(to right, #8b5cf6, #a855f7)',
+                        width: `${codeSynthesisProgress}%`
                     }} />
                 </div>
             </div>
