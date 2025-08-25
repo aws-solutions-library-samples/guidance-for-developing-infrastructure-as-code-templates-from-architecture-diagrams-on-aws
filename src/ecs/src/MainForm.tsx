@@ -2,8 +2,9 @@ import {
     Button,
     ColumnLayout,
     Container,
-    FileDropzone, FileUpload, FlashbarProps,
-    FormField,
+    FileDropzone,
+    FileUpload,
+    FormField, Icon,
     Select,
     SpaceBetween
 } from "@cloudscape-design/components";
@@ -11,8 +12,11 @@ import React, {useEffect, useState} from "react";
 import {OptionDefinition} from "@cloudscape-design/components/internal/components/option/interfaces";
 import Markdown from "react-markdown";
 import {useNotification} from "./App";
+import {triggerStepFunction, uploadImage} from "./api";
 
-export default function() {
+
+
+export default function () {
     const notif = useNotification();
     const [analysisResponse, setAnalysisResponse] = useState<string>('')
     const [cdkModulesResponse, setCdkModulesResponse] = useState<string>('')
@@ -27,8 +31,6 @@ export default function() {
     const [isScanning, setIsScanning] = useState(false)
     const [scanProgress, setScanProgress] = useState(0)
     const [scanPhase, setScanPhase] = useState<'vertical' | 'horizontal'>('vertical')
-    const [navigationOpen, setNavigationOpen] = useState(true)
-    const [currentPage, setCurrentPage] = useState('home')
     const [optimizeInProgress, setOptimizeInProgress] = useState(false)
     const [contentType, setContentType] = useState<'analysis' | 'optimization' | null>(null)
     const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
@@ -84,11 +86,49 @@ export default function() {
         };
     }, [isLoading]);
 
+    const animateScanning = async () => {
+
+        // Start the scanning animation and upload simultaneously
+        setIsScanning(true)
+        setScanProgress(0)
+        setScanPhase('vertical')
+        // Phase 1: Vertical scanning
+        await new Promise(resolve => {
+            const verticalInterval = setInterval(() => {
+                setScanProgress(prev => {
+                    if (prev >= 100 || !isScanning) {
+                        clearInterval(verticalInterval)
+                        resolve(void 0)
+                        return 100
+                    }
+                    return prev + 4
+                })
+            }, 100)
+        })
+
+        // Phase 2: Horizontal scanning
+        setScanProgress(0)
+        setScanPhase('horizontal')
+
+        await new Promise(resolve => {
+            const horizontalInterval = setInterval(() => {
+                setScanProgress(prev => {
+                    if (prev >= 100 || !isScanning) {
+                        clearInterval(horizontalInterval)
+                        resolve(void 0)
+                        return 100
+                    }
+                    return prev + 5
+                })
+            }, 100)
+        })
+    }
+
     const connectWebSocket = () => {
         setConnectionStatus('connecting');
         const wsUrl = (window as any).APP_CONFIG?.WEBSOCKET_URL;
         if (!wsUrl) {
-            console.error('WebSocket URL not configured');
+            abortAll('WebSocket URL not configured')
             setConnectionStatus('disconnected');
             return;
         }
@@ -107,7 +147,7 @@ export default function() {
                 const message = JSON.parse(event.data);
                 handleWebSocketMessage(message);
             } catch (e) {
-                console.error('Error parsing WebSocket message:', e);
+                abortAll('Error parsing WebSocket message:', e)
             }
         };
 
@@ -126,12 +166,8 @@ export default function() {
         };
 
         ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
+            abortAll("WebSocket connection failed. Please check your network connection.", error)
             setConnectionStatus('disconnected');
-            notif.notify({
-                type: "error",
-                content: "WebSocket connection failed. Please check your network connection.",
-            });
         };
     };
 
@@ -199,9 +235,7 @@ export default function() {
                 });
                 break;
             case 'error':
-                setInProgress(false);
-                setIsScanning(false);
-                notif.error(`Error: ${message.message}`);
+                abortAll(`Error: ${message.message}`)
                 break;
         }
     };
@@ -239,26 +273,24 @@ export default function() {
         const timestamp = Date.now();
         const s3Key = `${year}/${month}/${day}/${timestamp}-${fileName}`;
 
-        const origin = window.location.origin;
-        const presignedResponse = await fetch(`${origin}/api/presigned-url`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({key: s3Key, contentType: imageFile[0].type})
-        });
-        const {uploadUrl} = await presignedResponse.json();
-        await fetch(uploadUrl, {
-            method: 'PUT',
-            body: imageBlob,
-            headers: {'Content-Type': imageFile[0].type}
-        });
+        await uploadImage(s3Key, imageFile, imageBlob);
 
         setCurrentS3Key(s3Key);
         return s3Key;
     }
 
+    function abortAll(msg:string, e?:any) {
+        setIsScanning(false);
+        setScanProgress(0);
+        setInProgress(false);
+        setOptimizeInProgress(false)
+        console.error(msg, e);
+        notif.error(msg);
+    }
+
     async function onSubmit() {
         if (!imageData || !wsConnection || connectionStatus !== 'connected') {
-            notif.error("WebSocket not connected. Please refresh the page.");
+            abortAll("WebSocket not connected. Please refresh the page.");
             return;
         }
 
@@ -272,46 +304,11 @@ export default function() {
             setAnalysisComplete(false)
             setCdkModulesComplete(false)
 
-            // Start the scanning animation and upload simultaneously
-            setIsScanning(true)
-            setScanProgress(0)
-            setScanPhase('vertical')
 
-            const uploadPromise = ensureImageUploaded();
-
-            // Phase 1: Vertical scanning
-            await new Promise(resolve => {
-                const verticalInterval = setInterval(() => {
-                    setScanProgress(prev => {
-                        if (prev >= 100) {
-                            clearInterval(verticalInterval)
-                            resolve(void 0)
-                            return 100
-                        }
-                        return prev + 4
-                    })
-                }, 100)
-            })
-
-            // Phase 2: Horizontal scanning
-            setScanProgress(0)
-            setScanPhase('horizontal')
-
-            await new Promise(resolve => {
-                const horizontalInterval = setInterval(() => {
-                    setScanProgress(prev => {
-                        if (prev >= 100) {
-                            clearInterval(horizontalInterval)
-                            resolve(void 0)
-                            return 100
-                        }
-                        return prev + 5
-                    })
-                }, 100)
-            })
-
-            // Wait for upload to complete
-            const s3Key = await uploadPromise;
+            const [s3Key, animationDone] = await Promise.all([
+                ensureImageUploaded(),
+                animateScanning()
+            ]);
 
             // Send S3 key via WebSocket for analysis
             wsConnection.send(JSON.stringify({
@@ -322,33 +319,17 @@ export default function() {
 
             console.log('Upload completed, stored S3 key:', s3Key);
 
-            // Trigger Step Function for code generation (async)
-            const origin = window.location.origin;
-            const stepFunctionUrl = origin + "/api/step-function";
-
-            fetch(stepFunctionUrl, {
-                body: JSON.stringify({
-                    file_path: `s3://ACCOUNT_ID-a2c-diagramstorage-REGION/${s3Key}`,
-                    code_language: language?.value
-                }),
-                method: "POST",
-                credentials: "include",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            }).then(() => {
-                setIsCodeSynthesizing(true);
-                setCodeSynthesisProgress(0);
-            }).catch(console.error);
+            await triggerStepFunction(s3Key, language?.value!)
+            setIsCodeSynthesizing(true);
+            setCodeSynthesisProgress(0);
         } catch (e) {
-            console.error(e);
-            notif.error("Error analyzing architecture");
+            abortAll("Error analyzing architecture", e);
         }
     }
 
     async function onOptimize() {
         if (!imageData || !wsConnection || connectionStatus !== 'connected') {
-            notif.error("WebSocket not connected or no image selected. Please refresh and try again.");
+            abortAll("WebSocket not connected or no image selected. Please refresh and try again.");
             return;
         }
 
@@ -367,9 +348,7 @@ export default function() {
             }));
 
         } catch (e) {
-            console.error(e);
-            notif.error("Error optimizing architecture");
-            setOptimizeInProgress(false)
+            abortAll("Error optimizing architecture", e)
         }
     }
 
@@ -406,7 +385,7 @@ export default function() {
                         bottom: 0,
                         pointerEvents: 'none'
                     }}>
-                        {scanPhase === 'vertical' && (
+                        {isScanning && scanPhase === 'vertical' && (
                             <div style={{
                                 position: 'absolute',
                                 left: 0,
@@ -419,7 +398,7 @@ export default function() {
                                 boxShadow: '0 0 20px rgba(59, 130, 246, 0.6)'
                             }}/>
                         )}
-                        {scanPhase === 'horizontal' && (
+                        {isScanning && scanPhase === 'horizontal' && (
                             <div style={{
                                 position: 'absolute',
                                 top: 0,
@@ -505,102 +484,116 @@ export default function() {
         )}
     </SpaceBetween>;
 
-    return <ColumnLayout columns={2}>
-        <SpaceBetween size={"l"}>
-            <Container>
-                <SpaceBetween size={"l"}>
-                    <FormField stretch={true}>
-                        <FileDropzone onChange={x => onFileSelect(x.detail.value)}>
-                            {imgSpot}
-                        </FileDropzone>
-                    </FormField>
-                    <FormField description={"Select your code output language"} stretch={true}>
-                        <Select selectedOption={language}
-                                options={[{ label: "Python", value: "python" }, {
-                                    value: "typescript",
-                                    label: "Typescript"
-                                }]}
-                                onChange={x => setLanguage(x.detail.selectedOption)}
-                                placeholder={"Select a language"}
-                        />
-                    </FormField>
-                    <FormField>
-                        <SpaceBetween direction="horizontal" size="s">
-                            <Button variant={"primary"}
-                                    disabled={!imageData?.length || !language || isScanning || connectionStatus !== 'connected'}
-                                    disabledReason={connectionStatus !== 'connected' ? "WebSocket not connected" : "Please select image and language"}
-                                    onClick={x => onSubmit()}
-                                    loading={inProgress}
-                                    loadingText={isScanning ? "Scanning..." : "Generating"}>
-                                {isScanning ? "Scanning..." : inProgress ? "Generating..." : "Generate"}
-                            </Button>
-                            <Button variant={"primary"}
-                                    disabled={!imageData?.length || isScanning || inProgress}
-                                    disabledReason={"Please select image"}
-                                    onClick={x => onOptimize()}
-                                    loading={optimizeInProgress}
-                                    loadingText={"Optimizing"}>
-                                {optimizeInProgress ? "Optimizing..." : "Optimize"}
-                            </Button>
-                        </SpaceBetween>
-                    </FormField>
-                    <FormField>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '8px',
-                            backgroundColor: connectionStatus === 'connected' ? '#f0f9ff' : '#fef2f2',
-                            borderRadius: '4px',
-                            border: `1px solid ${connectionStatus === 'connected' ? '#0ea5e9' : '#ef4444'}`
-                        }}>
+    return <SpaceBetween size={"l"}>
+        <h1>IaC Generator</h1>
+        <ColumnLayout columns={2}>
+            <SpaceBetween size={"l"}>
+                <Container>
+                    <SpaceBetween size={"l"}>
+                        <FormField stretch={true}>
+                            <FileDropzone onChange={x => onFileSelect(x.detail.value)}>
+                                {imgSpot}
+                            </FileDropzone>
+                        </FormField>
+                        <FormField description={"Select your code output language"} stretch={true}>
+                            <Select selectedOption={language}
+                                    options={[{label: "Python", value: "python"}, {
+                                        value: "typescript",
+                                        label: "Typescript"
+                                    }]}
+                                    onChange={x => setLanguage(x.detail.selectedOption)}
+                                    placeholder={"Select a language"}
+                            />
+                        </FormField>
+                        <FormField>
+                            <SpaceBetween direction="horizontal" size="s">
+                                <Button variant={"primary"}
+                                        disabled={!imageData?.length || !language || isScanning || connectionStatus !== 'connected'}
+                                        disabledReason={connectionStatus !== 'connected' ? "WebSocket not connected" : "Please select image and language"}
+                                        onClick={x => onSubmit()}
+                                        loading={inProgress}
+                                        loadingText={isScanning ? "Scanning..." : "Generating"}>
+                                    {isScanning ? "Scanning..." : inProgress ? "Generating..." : "Generate"}
+                                </Button>
+                                <Button variant={"primary"}
+                                        disabled={!imageData?.length || isScanning || inProgress}
+                                        disabledReason={"Please select image"}
+                                        onClick={x => onOptimize()}
+                                        loading={optimizeInProgress}
+                                        loadingText={"Optimizing"}>
+                                    {optimizeInProgress ? "Optimizing..." : "Optimize"}
+                                </Button>
+                            </SpaceBetween>
+                        </FormField>
+                        <FormField>
                             <div style={{
-                                width: '8px',
-                                height: '8px',
-                                borderRadius: '50%',
-                                backgroundColor: connectionStatus === 'connected' ? '#22c55e' :
-                                    connectionStatus === 'connecting' ? '#f59e0b' : '#ef4444'
-                            }} />
-                            <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px',
+                                backgroundColor: connectionStatus === 'connected' ? '#f0f9ff' : '#fef2f2',
+                                borderRadius: '4px',
+                                border: `1px solid ${connectionStatus === 'connected' ? '#0ea5e9' : '#ef4444'}`
+                            }}>
+                                <div style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                    backgroundColor: connectionStatus === 'connected' ? '#22c55e' :
+                                        connectionStatus === 'connecting' ? '#f59e0b' : '#ef4444'
+                                }}/>
+                                <span style={{fontSize: '14px', fontWeight: '500'}}>
                                                 WebSocket: {connectionStatus === 'connected' ? 'Connected' :
-                                connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+                                    connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
                                             </span>
-                            {connectionStatus === 'disconnected' && (
-                                <Button onClick={connectWebSocket}>Reconnect</Button>
-                            )}
-                        </div>
-                    </FormField>
-                </SpaceBetween>
-            </Container>
+                                {connectionStatus === 'disconnected' && (
+                                    <Button onClick={connectWebSocket}>Reconnect</Button>
+                                )}
+                            </div>
+                        </FormField>
+                    </SpaceBetween>
+                </Container>
+                <Container>
+                    {cdkModulesResponse && (
+                        <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '18px'}}>CDK Modules
+                            Breakdown</div>
+                    )}
+                    {!cdkModulesResponse && <div>CDK modules breakdown will appear here after processing</div>}
+                    <Markdown>
+                        {cdkModulesResponse}
+                    </Markdown>
+                </Container>
+            </SpaceBetween>
             <Container>
-                {cdkModulesResponse && (
-                    <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>CDK Modules Breakdown</div>
+                {thinkingResponse && (
+                    <div style={{
+                        marginBottom: '20px',
+                        padding: '12px',
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: '8px',
+                        border: '1px solid #e9ecef'
+                    }}>
+                        <div style={{fontWeight: 'bold', marginBottom: '8px', fontSize: '14px', color: '#6c757d'}}>🤔
+                            Thinking...
+                        </div>
+                        <div style={{fontSize: '13px', color: '#495057', fontStyle: 'italic'}}>
+                            <Markdown>{thinkingResponse}</Markdown>
+                        </div>
+                    </div>
                 )}
-                {!cdkModulesResponse && <div>CDK modules breakdown will appear here after processing</div>}
+                {contentType === 'analysis' && analysisResponse && (
+                    <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '18px'}}>Architecture Summary</div>
+                )}
+                {contentType === 'optimization' && analysisResponse && (
+                    <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '18px'}}>Recommended
+                        Optimizations</div>
+                )}
+                {!analysisResponse && !thinkingResponse &&
+                    <div>Architecture analysis will appear here after processing</div>}
                 <Markdown>
-                    {cdkModulesResponse}
+                    {analysisResponse}
                 </Markdown>
             </Container>
-        </SpaceBetween>
-        <Container>
-            {thinkingResponse && (
-                <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '14px', color: '#6c757d' }}>🤔 Thinking...</div>
-                    <div style={{ fontSize: '13px', color: '#495057', fontStyle: 'italic' }}>
-                        <Markdown>{thinkingResponse}</Markdown>
-                    </div>
-                </div>
-            )}
-            {contentType === 'analysis' && analysisResponse && (
-                <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>Architecture Summary</div>
-            )}
-            {contentType === 'optimization' && analysisResponse && (
-                <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>Recommended Optimizations</div>
-            )}
-            {!analysisResponse && !thinkingResponse && <div>Architecture analysis will appear here after processing</div>}
-            <Markdown>
-                {analysisResponse}
-            </Markdown>
-        </Container>
-    </ColumnLayout>
+        </ColumnLayout>
+    </SpaceBetween>
 }

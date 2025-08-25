@@ -1,0 +1,17 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+
+  start-frontend:
+    dir: src/ecs/src
+    env:
+      REACT_APP_WEBSOCKET_URL: 'wss://imi0r9m0x3.execute-api.us-west-2.amazonaws.com/prod'
+      REACT_APP_API_HOST: 'https://dhnpunhdx9fvg.cloudfront.net'
+    cmds:
+      - npm start
+    silent: true

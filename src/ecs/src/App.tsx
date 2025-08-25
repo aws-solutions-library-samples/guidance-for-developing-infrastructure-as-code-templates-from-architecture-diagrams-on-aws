@@ -7,7 +7,9 @@ import MainForm from "./MainForm";
 import {useLocalStorage} from "usehooks-ts"
 import {v4 as uuidv4} from 'uuid';
 import LandingPage from "./LandingPage";
+import {initGlobalConfig} from "./config-loader";
 
+initGlobalConfig(); // Also note that in public/index.html we load a config.js
 
 const NotificationContext = createContext({
     items: [] as FlashbarProps.MessageDefinition[],
