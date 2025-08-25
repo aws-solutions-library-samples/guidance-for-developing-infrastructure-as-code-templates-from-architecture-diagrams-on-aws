@@ -92,35 +92,39 @@ export default function () {
         setIsScanning(true)
         setScanProgress(0)
         setScanPhase('vertical')
-        // Phase 1: Vertical scanning
+        // Phase 1: Vertical scanning (30 seconds)
         await new Promise(resolve => {
             const verticalInterval = setInterval(() => {
                 setScanProgress(prev => {
-                    if (prev >= 100 || !isScanning) {
+                    const newProgress = prev + 0.25;
+                    console.log(`Vertical progress: ${newProgress}`);
+                    if (newProgress >= 100 || !isScanning) {
                         clearInterval(verticalInterval)
                         resolve(void 0)
                         return 100
                     }
-                    return prev + 4
+                    return newProgress
                 })
-            }, 100)
+            }, 75)
         })
 
-        // Phase 2: Horizontal scanning
+        // Phase 2: Horizontal scanning (30 seconds)
         setScanProgress(0)
         setScanPhase('horizontal')
 
         await new Promise(resolve => {
             const horizontalInterval = setInterval(() => {
                 setScanProgress(prev => {
-                    if (prev >= 100 || !isScanning) {
+                    const newProgress = prev + 0.25;
+                    console.log(`Horizontal progress: ${newProgress}`);
+                    if (newProgress >= 100 || !isScanning) {
                         clearInterval(horizontalInterval)
                         resolve(void 0)
                         return 100
                     }
-                    return prev + 5
+                    return newProgress
                 })
-            }, 100)
+            }, 75)
         })
     }
 
@@ -142,9 +146,9 @@ export default function () {
         };
 
         ws.onmessage = (event) => {
-            //console.log('WebSocket message received:', event.data);
             try {
                 const message = JSON.parse(event.data);
+                console.log('WebSocket message received:', message.type);
                 handleWebSocketMessage(message);
             } catch (e) {
                 abortAll('Error parsing WebSocket message:', e)
@@ -189,13 +193,11 @@ export default function () {
                 // Don't show thinking for CDK modules
                 break;
             case 'cdk_modules_stream':
-                console.log('Received CDK modules stream:', message.content);
                 setThinkingResponse(''); // Clear thinking when CDK modules starts
                 setCdkModulesResponse(prev => prev + message.content);
                 break;
             case 'cdk_modules_complete':
                 setCdkModulesComplete(true);
-                checkBothComplete();
                 break;
             case 'optimization_stream':
                 setThinkingResponse(''); // Clear thinking when optimization starts
@@ -211,7 +213,6 @@ export default function () {
                 break;
             case 'complete':
                 setAnalysisComplete(true);
-                checkBothComplete();
                 break;
             case 'synthesis_progress':
                 setIsScanning(false); // Hide scanning when synthesis starts
@@ -220,6 +221,7 @@ export default function () {
             case 'code_ready':
                 setIsCodeSynthesizing(false);
                 setCodeSynthesisProgress(0);
+                setInProgress(false);
                 notif.notify({
                     type: "success",
                     content: (
@@ -240,17 +242,15 @@ export default function () {
         }
     };
 
-    const checkBothComplete = () => {
-        console.log('Checking completion:', {analysisComplete, cdkModulesComplete, analysisStartTime});
-        setTimeout(() => {
-            if (analysisComplete && cdkModulesComplete && analysisStartTime) {
-                const duration = ((Date.now() - analysisStartTime) / 1000).toFixed(2);
-                setInProgress(false);
-                setIsScanning(false);
-                notif.success(`Analysis complete in ${duration} seconds`);
-            }
-        }, 100);
-    };
+    useEffect(() => {
+        if (analysisComplete && cdkModulesComplete && analysisStartTime) {
+            const duration = ((Date.now() - analysisStartTime) / 1000).toFixed(2);
+            console.log('Both complete! Showing notification');
+            setInProgress(false);
+            setIsScanning(false);
+            notif.success(`Analysis complete in ${duration} seconds`);
+        }
+    }, [analysisComplete, cdkModulesComplete, analysisStartTime]);
 
     // Show loading state while checking authentication
     if (isLoading) {
@@ -311,6 +311,7 @@ export default function () {
             ]);
 
             // Send S3 key via WebSocket for analysis
+            setAnalysisStartTime(Date.now());
             wsConnection.send(JSON.stringify({
                 action: 'analyze',
                 s3Key: s3Key,
