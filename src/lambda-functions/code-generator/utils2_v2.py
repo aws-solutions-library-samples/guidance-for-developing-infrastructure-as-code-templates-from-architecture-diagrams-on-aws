@@ -8,6 +8,7 @@ import botocore
 import zipfile
 import yaml
 import re
+import json
 
 
 def get_stack_name():
@@ -284,6 +285,95 @@ def load_api_key(file_path):
         print(f"Error: Failed to parse YAML file. {e}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+
+
+async def send_progress_update(progress):
+    """
+    Send progress update to all connected WebSocket clients
+    """
+    try:
+        websocket_api_id = os.environ['WEBSOCKET_API_ID']
+        connections_table = os.environ['CONNECTIONS_TABLE']
+        region = os.environ['REGION']
+        
+        dynamodb = boto3.resource('dynamodb', region_name=region)
+        table = dynamodb.Table(connections_table)
+        
+        apigateway_client = boto3.client('apigatewaymanagementapi',
+                                       endpoint_url=f'https://{websocket_api_id}.execute-api.{region}.amazonaws.com/prod')
+        
+        response = table.scan()
+        connections = response.get('Items', [])
+        
+        message = {
+            'type': 'synthesis_progress',
+            'progress': progress
+        }
+        
+        for connection in connections:
+            connection_id = connection['connectionId']
+            try:
+                apigateway_client.post_to_connection(
+                    ConnectionId=connection_id,
+                    Data=json.dumps(message)
+                )
+            except Exception as e:
+                print(f"Failed to send progress to connection {connection_id}: {e}")
+                try:
+                    table.delete_item(Key={'connectionId': connection_id})
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"Error sending progress update: {e}")
+
+
+async def send_websocket_notification(presigned_url):
+    """
+    Send WebSocket notification to all connected clients with the presigned URL
+    """
+    try:
+        # Get environment variables
+        websocket_api_id = os.environ['WEBSOCKET_API_ID']
+        connections_table = os.environ['CONNECTIONS_TABLE']
+        region = os.environ['REGION']
+        
+        # Initialize clients
+        dynamodb = boto3.resource('dynamodb', region_name=region)
+        table = dynamodb.Table(connections_table)
+        
+        apigateway_client = boto3.client('apigatewaymanagementapi',
+                                       endpoint_url=f'https://{websocket_api_id}.execute-api.{region}.amazonaws.com/prod')
+        
+        # Get all connections
+        response = table.scan()
+        connections = response.get('Items', [])
+        
+        # Prepare message
+        message = {
+            'type': 'code_ready',
+            'message': 'Your code is ready!',
+            'downloadUrl': presigned_url,
+            'downloadText': 'Click here to download'
+        }
+        
+        # Send message to all connections
+        for connection in connections:
+            connection_id = connection['connectionId']
+            try:
+                apigateway_client.post_to_connection(
+                    ConnectionId=connection_id,
+                    Data=json.dumps(message)
+                )
+            except Exception as e:
+                print(f"Failed to send message to connection {connection_id}: {e}")
+                # Remove stale connection
+                try:
+                    table.delete_item(Key={'connectionId': connection_id})
+                except Exception:
+                    pass
+                    
+    except Exception as e:
+        print(f"Error sending WebSocket notification: {e}")
 
 
 

@@ -5,6 +5,7 @@ import os
 import yaml
 from utils2_v2 import *
 from yaml.loader import SafeLoader
+import json
 
 def get_api_key_from_secrets():
     """
@@ -73,6 +74,9 @@ async def async_lambda_handler(event, context):
 
     # Generate a presigned URL for the uploaded file
     presigned_url = generate_presigned_url(result_bucket_name, s3_object_key, expiration=86400)
+
+    # Send WebSocket notification to all connected clients
+    await send_websocket_notification(presigned_url)
 
     # Return a dictionary with a downloadable link to the generated code and a success message
     return {
