@@ -32,15 +32,15 @@ function App() {
     const [showWelcome, setShowWelcome] = useLocalStorage("showWelcome", true);
     const notifyFunc = (e: FlashbarProps.MessageDefinition) => {
         const uuid = uuidv4();
-        setFlashbarItems([...flashbarItems, {
+        setFlashbarItems(prev => [{
             ...e,
             dismissible: true,
             id: uuid,
             onDismiss: n => {
-                setFlashbarItems(flashbarItems.filter(fi => fi.id !== uuid));
+                setFlashbarItems(prev => prev.filter(fi => fi.id !== uuid));
                 e.onDismiss?.(n);
             }
-        }])
+        }, ...prev])
     };
     const context = {
         items: flashbarItems,
