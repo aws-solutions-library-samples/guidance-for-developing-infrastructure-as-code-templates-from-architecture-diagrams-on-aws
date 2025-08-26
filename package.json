@@ -55,12 +55,15 @@
   "dependencies": {
     "@cloudcomponents/cdk-pull-request-approval-rule": "2.1.0",
     "@cloudcomponents/cdk-pull-request-check": "2.1.0",
+    "@cloudscape-design/chat-components": "^1.0.61",
     "@types/uuid": "9.0.3",
     "@typescript-eslint/visitor-keys": "5.62.0",
     "aws-cdk-lib": "^2.178.0",
     "cdk-monitoring-constructs": "5.10.1",
     "cdk-nag": "2.27.129",
     "constructs": "10.2.70",
+    "react-router-dom": "^7.8.2",
+    "react-use": "^17.6.0",
     "source-map-support": "^0.5.21",
     "uuid": "9.0.1"
   },

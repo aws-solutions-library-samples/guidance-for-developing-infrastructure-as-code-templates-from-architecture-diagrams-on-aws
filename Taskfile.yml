@@ -11,7 +11,8 @@ tasks:
     dir: src/ecs/src
     env:
       REACT_APP_WEBSOCKET_URL: 'wss://imi0r9m0x3.execute-api.us-west-2.amazonaws.com/prod'
-      REACT_APP_API_HOST: 'https://dhnpunhdx9fvg.cloudfront.net'
+      #REACT_APP_API_HOST: 'https://dhnpunhdx9fvg.cloudfront.net'
+      REACT_APP_API_HOST: 'http://A2C-AI-a2cAL-YZl8FsWpPvZb-756324268.us-west-2.elb.amazonaws.com'
     cmds:
       - npm start
     silent: true
