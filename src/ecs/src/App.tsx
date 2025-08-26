@@ -45,8 +45,8 @@ function App() {
     const context = {
         items: flashbarItems,
         notify: notifyFunc,
-        success: (s:string)=>notifyFunc({type: "success", content: s}),
-        error: (s:string)=>notifyFunc({type: "error", content: s})
+        success: (s: string) => notifyFunc({type: "success", content: s}),
+        error: (s: string) => notifyFunc({type: "error", content: s})
     }
 
     if (showWelcome) {
@@ -55,11 +55,15 @@ function App() {
 
     return (
         <>
+            <TopNavigation
+                identity={{title: "Architec2App AI", href: "/#", logo: {src: "./logo.svg"}}}
+                utilities={[{
+                    type: "button", iconName: "arrow-up", onClick: () => {
+                        setShowWelcome(true)
+                    }
+                }]}
+            />
             <NotificationContext value={context}>
-                <TopNavigation
-                    identity={{title: "Architec2App AI", href: "/#", logo: {src: "./logo.svg"}}}
-                    utilities={[{type: "button" ,iconName: "arrow-up", onClick: ()=>{setShowWelcome(true)}}]}
-                />
                 <AppLayout
                     navigationHide={true}
                     notifications={
@@ -68,6 +72,7 @@ function App() {
                     toolsOpen={howToUseOpen}
                     onToolsChange={e => setHowToUseOpen(e.detail.open)}
                     toolsWidth={500}
+
                     tools={<HowToUse/>}
                     content={<MainForm/>}
                 />
