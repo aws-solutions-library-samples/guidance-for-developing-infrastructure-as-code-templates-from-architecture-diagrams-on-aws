@@ -16,11 +16,11 @@ def get_api_key_from_secrets():
     
     try:
         secret_response = client.get_secret_value(
-            SecretId='A2C_API_KEY' # Secret name where API key is stored
+            SecretId='A2A_API_KEY' # Secret name where API key is stored
         )
 
         secret_value = json.loads(secret_response['SecretString'])
-        api_key = secret_value['A2C_API_KEY']
+        api_key = secret_value['A2A_API_KEY']
         return api_key
     except Exception as e:
         print(f"Error retrieving API key from Secrets Manager: {str(e)}")

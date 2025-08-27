@@ -19,7 +19,7 @@ def get_perplexity_api_key():
     """Get Perplexity API key from Secrets Manager"""
     try:
         print("Retrieving API key from Secrets Manager")
-        response = secrets_client.get_secret_value(SecretId='A2C_API_KEY')
+        response = secrets_client.get_secret_value(SecretId='A2A_API_KEY')
         secret_string = response['SecretString']
         print(f"Secret retrieved, length: {len(secret_string)}")
         

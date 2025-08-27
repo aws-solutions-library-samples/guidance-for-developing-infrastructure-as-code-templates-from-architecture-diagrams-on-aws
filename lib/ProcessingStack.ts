@@ -74,7 +74,7 @@ export class ProcessingStack extends cdk.Stack {
         }),
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
-          resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:A2C_API_KEY*`],
+          resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:A2A_API_KEY*`],
         }),
         new iam.PolicyStatement({
           actions: ['execute-api:ManageConnections'],
@@ -144,7 +144,7 @@ export class ProcessingStack extends cdk.Stack {
         }),
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue'],
-          resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:A2C_API_KEY*`],
+          resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:A2A_API_KEY*`],
         }),
         new iam.PolicyStatement({
           actions: ['s3:GetObject'],

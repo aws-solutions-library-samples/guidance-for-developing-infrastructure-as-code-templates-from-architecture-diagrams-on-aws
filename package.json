@@ -2,7 +2,7 @@
   "name": "a2cai",
   "version": "0.1.0",
   "bin": {
-    "datahackathon": "bin/a2cai.js"
+    "app": "bin/a2cai.js"
   },
   "scripts": {
     "build": "tsc && tsc --build --clean && npm run lint",
