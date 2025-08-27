@@ -67,7 +67,7 @@ function App() {
                 <AppLayout
                     navigationHide={true}
                     notifications={
-                        <Flashbar items={flashbarItems} stackItems={true}/>
+                        <Flashbar items={flashbarItems} stackItems={false}/>
                     }
                     toolsOpen={howToUseOpen}
                     onToolsChange={e => setHowToUseOpen(e.detail.open)}
