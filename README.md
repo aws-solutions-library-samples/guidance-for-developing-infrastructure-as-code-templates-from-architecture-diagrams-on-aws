@@ -52,7 +52,7 @@ Approved Bedrock access to Claude 4.0 Sonnet in the desired deployment region.
 ### Supported Regions
 Any region that supports the required Claude models on Bedrock is a viable deployment target. 
 This currently includes: us-east-1, us-west-2, eu-central-1, ap-northeast-1, and ap-southeast-1.
-NOTE: us-east-1 is currently experiencing throttling issues with Claude 3.7 Sonnet. Deployment to other regions is strongly advised.
+NOTE: us-east-1 is currently experiencing throttling issues with Claude 4.0 Sonnet. Deployment to other regions is strongly advised.
 
 ## Deployment Steps
 
@@ -81,6 +81,10 @@ NOTE: For updates and future deplyoments, the 'source' command needs to be run e
 Install the required CDK dependencies.
 ```bash
 npm ci
+```
+Install the required CDK dependencies for the CloudFront edge Lambda.
+````bash
+cd ./src/lambda-functions/edge-lambda && npm install
 ```
 
 ### 5. Bootstrap the account
@@ -118,11 +122,10 @@ cdk deploy --all --require-approval never
      - The associated target group shows healthy ECS tasks as registered targets  
 
 4. **Web Application Access**  
-   - Retrieve the ALB DNS name from:  
+   - Retrieve the CloudFront URL from:  
      - The **Outputs** tab of the `A2A-AI-FrontEndStack` in CloudFormation  
-     - Or from the Load Balancer console under DNS name  
-   - Access the application via `http://<ALB-DNS-NAME>`  
-   - **Note:** The application is accessible over HTTP only. Ensure your browser is not redirecting to HTTPS if you encounter connection issues.  
+     - Or from the CloudFront console under the Distribution - Distribution domain name  
+   - Access the application via the URL. Creation of a new Cognito user will be required for first time access.
 
 > Allow approx. 5 minutes after stack completion for ECS service initialization and container provisioning. The ALB health checks may take 2–3 minutes to show healthy status after tasks become active.
 
@@ -147,7 +150,7 @@ cdk destroy A2A-AI-FrontEndStack
 cdk destroy A2A-AI-ProcessingStack
 cdk destroy A2A-AI-StorageStack
 ```
-NOTE: If the Front-End stack was deployed using default settings, a new VPC has been created for the ALB. This CloudFormation stack deletion will fail and require manual component deletion of a VPC endpoint and associated subnet.
+NOTE: If the Front-End stack was deployed using default settings, a new VPC has been created for the ALB. This CloudFormation stack deletion will fail and require manual component deletion of certain VPC components due to AWS restrictions on VPC deletion.
 
 ## FAQ, known issues, additional considerations, and limitations
 
