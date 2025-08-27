@@ -100,7 +100,7 @@ In the AWS Console, navigate to Secrets Manager create a new secret with the nam
 Deploy the project using CDK.
 ```bash
 cdk deploy --all --require-approval never
-```
+````
 
 ## Deployment Validation
 
