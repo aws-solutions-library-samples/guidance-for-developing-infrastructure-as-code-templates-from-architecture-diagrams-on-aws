@@ -83,7 +83,7 @@ Install the required CDK dependencies.
 npm ci
 ```
 Install the required CDK dependencies for the CloudFront edge Lambda.
-````bash
+```bash
 cd ./src/lambda-functions/edge-lambda && npm install
 ```
 
