@@ -45,13 +45,13 @@ export default function (props: { onGetStarted: () => void }) {
                         <p>Architec2App AI can be configured to respect organisational development specs. Generated Code is natively compliant with your standards</p>
                     </div>
                     <div className={"columnLayoutContent"}>
-                        <h3>Receive accurate responses with references and citations</h3>
-                        <p>Amazon Q Business generates answers and insights that are accurate and faithful to the
-                            material and knowledge that you provide, backed up with references and citations to source
-                            documents.</p>
-                        <h3>Boost time to value with built-in connectors</h3>
-                        <p>Deploy faster with built-in connectors to popular enterprise applications and document
-                            repositories, and bring actionable insights to your employees in one unified experience.</p>
+                        <h3>Optimize Architectures with our Optimization Agents</h3>
+                        <p>Architec2App AI provides a nuanced Blueprint for exploring optimization opportunities 
+                            for the provided Architecture Diagram. Agents analyse the drawing along different dimensions - cost, security
+                            performance and provide reocmmendations with reliable  information sources retrieved from the Web</p>
+                        <h3>Boost time to value with  Ultra fast iteration </h3>
+                        <p>Deploy faster with complete all sanity checks on the generated code by reviewing the generated codebase with
+                        Amazon Q Developer</p>
                     </div>
                 </ColumnLayout>
             </Container>
