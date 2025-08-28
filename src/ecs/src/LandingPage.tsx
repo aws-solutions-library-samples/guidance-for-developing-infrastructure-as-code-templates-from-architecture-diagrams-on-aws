@@ -27,7 +27,7 @@ export default function (props: { onGetStarted: () => void }) {
                           }
 
                           secondaryHeader={<Container
-                              header={<Header>Translate your diagram to infrastructure code</Header>}>
+                              header={<Header>Translate your diagram to Infrastructure as Code</Header>}>
                               <Button onClick={e => props.onGetStarted()}
                                   variant={"primary"}>Get started</Button></Container>}
                           maxContentWidth={1100}
@@ -56,7 +56,8 @@ export default function (props: { onGetStarted: () => void }) {
                 </ColumnLayout>
             </Container>
             <h2>Use cases</h2>
-            <Container>TODO</Container>
+            <Container>1. Rapid generation of entire codebases from Architecture drawings 
+                       2. Optimisation apportunity analysis for Architecture Drawings </Container>
         </div>
     </ContentLayout>
 
