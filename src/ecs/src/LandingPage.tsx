@@ -3,8 +3,8 @@ import "./LandingPage.css"
 
 export default function (props: { onGetStarted: () => void }) {
 
-    const content2 = "Empower your workforce with generative AI"
-    const content3 = "Boost employee productivity with Amazon Q Business, a generative AI-powered application that revolutionizes how you get work done."
+    const content2 = "10X your AWS Development with Agentic AI"
+    const content3 = "Boost innovation with Architec2App AI, an autonomus system that revolutionises how you take Ideas to production."
 
     return <ContentLayout headerVariant="high-contrast"
                           defaultPadding={true}
@@ -38,14 +38,11 @@ export default function (props: { onGetStarted: () => void }) {
             <Container disableHeaderPaddings={true}>
                 <ColumnLayout columns={2} variant={"default"}>
                     <div className={"columnLayoutContent"}>
-                        <h3>Streamline tasks in the workplace</h3>
-                        <p>Extract insights, brainstorm new ideas, generate content and summaries, take actions, and
-                            accelerate decision making by connecting Amazon Q Business to your enterprise content and
-                            systems.</p>
+                        <h3>Prompt Free codebase Generation</h3>
+                        <p> Our autonomous Agentic system can generate a nuanced Infrastructure as Code directly fom the Architecture Diagram, 
+                        without any additional prompting </p>
                         <h3>Enforce security with enterprise-grade access controls</h3>
-                        <p>Securely provide access to enterprise content and data based on your users’ permissions.
-                            Amazon Q Business understands and respects your existing identities, roles, and
-                            permissions.</p>
+                        <p>Architec2App AI can be configured to respect organisational development specs. Generated Code is natively compliant with your standards</p>
                     </div>
                     <div className={"columnLayoutContent"}>
                         <h3>Receive accurate responses with references and citations</h3>
