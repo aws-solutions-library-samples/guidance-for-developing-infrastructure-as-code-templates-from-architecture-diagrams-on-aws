@@ -1,0 +1,132 @@
+:root {
+    --scanline-thickess: 1px;
+    --animation-durations: calc( var(--scan-duration) / 2);
+    --scan-duration: 10s;
+}
+
+/*TODO: Import all animation variables*/
+.loaderbar{
+    height: 2px;
+    background: var(--color-background-loading-bar-gen-ai-tey70i, linear-gradient(90deg, #b8e7ff 0, #09f 10%, #5c7fff 24%, #8575ff 50%, #962eff 76%, #09f 90%, #b8e7ff 100%));
+    background-size: 200% 100%;
+    background-position: 0 100%;
+    animation: loaderbar-keyframes 3s cubic-bezier(0,.08,1,.82) infinite forwards, var(--motion-keyframes-fade-in-0r842q, awsui-fade-in-35003c) var(--motion-duration-complex-tbdo30, .25s) var(--motion-easing-expressive-o5jqzg, cubic-bezier(.84,0,.16,1));
+}
+
+@keyframes loaderbar-keyframes {
+    0% {
+        background-position: 0 0
+    }
+
+    to {
+        background-position: -200% 0
+    }
+}
+
+@keyframes awsui_searchbar-rtl_pac4k_foszn_1 {
+    0% {
+        background-position: -200% 0
+    }
+
+    to {
+        background-position: 0 0
+    }
+}
+
+.scanner {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    left: -10px;
+    bottom: -10px;
+    overflow: hidden;
+}
+
+.scanning-line {
+    z-index: 10000;
+    position: absolute;
+
+    border-radius: 1000px;
+}
+
+.scan-lr{
+    animation: scan-left-right var(--animation-durations) linear;
+    animation-delay: var(--animation-durations);
+    top: 0;
+    left: calc(0 - var(--scanline-thickess));
+    width: var(--scanline-thickess);
+    height: 100%;
+    /*background: rgb(21, 234, 228, 0.7);*/
+    background: linear-gradient(0deg, #b8e7ff 0, #09f 10%, #5c7fff 24%, #8575ff 50%, #962eff 76%, #09f 90%, #b8e7ff 100%);
+    /*box-shadow: 0 0 15px 5px #02faf3;*/
+    opacity: 0;
+    transform-style: preserve-3d;
+    border-radius: 100px;
+}
+
+.scan-lr:before{
+    content: "";
+    position: absolute;
+    inset: -4px;
+    background: linear-gradient(0deg, #b8e7ff 0, #09f 10%, #5c7fff 24%, #8575ff 50%, #962eff 76%, #09f 90%, #b8e7ff 100%);
+    filter: blur(7px);
+    transform: translate3d(0px,0px,-1px);
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.scan-td{
+    animation: scan-top-down var(--animation-durations) linear;
+    top: 0;
+    left: 0;
+    height: var(--scanline-thickess);
+    background: linear-gradient(90deg, #b8e7ff 0, #09f 10%, #5c7fff 24%, #8575ff 50%, #962eff 76%, #09f 90%, #b8e7ff 100%);
+    /*box-shadow: 0 0 15px 5px #65fa02;*/
+    opacity: 0;
+}
+
+.scan-td:before{
+    content: "";
+    position: absolute;
+    inset: -4px;
+    background: linear-gradient(90deg, #b8e7ff 0, #09f 10%, #5c7fff 24%, #8575ff 50%, #962eff 76%, #09f 90%, #b8e7ff 100%);
+    filter: blur(7px);
+    transform: translate3d(0px,0px,-1px);
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+
+@keyframes scan-left-right {
+    0% {
+        top: 0;
+        left: -5px;
+        width: var(--scanline-thickess);
+        height: calc(100% - 10px);
+        opacity: 1;
+    }
+    100% {
+        top: 0;
+        left: 100%;
+        width: var(--scanline-thickess);
+        height: calc(100% - 10px);
+        opacity: 1;
+    }
+}
+
+@keyframes scan-top-down {
+    from {
+        top: 0;
+        left: 5px;
+        right: 5px;
+        height: var(--scanline-thickess);
+        opacity: 1;
+    }
+    to {
+        top: 100%;
+        left: 5px;
+        right: 5px;
+        height: var(--scanline-thickess);
+        opacity: 1;
+    }
+}

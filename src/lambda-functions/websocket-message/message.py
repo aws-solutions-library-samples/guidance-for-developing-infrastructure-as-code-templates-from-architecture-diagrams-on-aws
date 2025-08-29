@@ -2,8 +2,7 @@ import json
 import os
 import base64
 import boto3
-import time
-import random
+import urllib3
 from botocore.exceptions import ClientError
 
 # Load configuration
@@ -13,7 +12,33 @@ with open('websocket_config.json', 'r') as f:
 dynamodb = boto3.resource('dynamodb')
 s3_client = boto3.client('s3')
 bedrock = boto3.client('bedrock-runtime', region_name=os.environ['REGION'])
+secrets_client = boto3.client('secretsmanager', region_name=os.environ['REGION'])
 table = dynamodb.Table(os.environ['CONNECTIONS_TABLE'])
+
+def get_perplexity_api_key():
+    """Get Perplexity API key from Secrets Manager"""
+    try:
+        print("Retrieving API key from Secrets Manager")
+        response = secrets_client.get_secret_value(SecretId='A2A_API_KEY')
+        secret_string = response['SecretString']
+        print(f"Secret retrieved, length: {len(secret_string)}")
+        
+        # Try to parse as JSON first, fallback to plain string
+        try:
+            secret_data = json.loads(secret_string)
+            if isinstance(secret_data, dict) and 'api_key' in secret_data:
+                return secret_data['api_key']
+            elif isinstance(secret_data, dict):
+                # Return first value if it's a dict but no 'api_key' key
+                return list(secret_data.values())[0]
+        except json.JSONDecodeError:
+            pass
+        
+        # Return as plain string
+        return secret_string
+    except Exception as e:
+        print(f"Error getting API key: {str(e)}")
+        raise
 
 # S3 bucket for images
 s3_image_bucket = f'{os.environ["ACCOUNT_ID"]}-a2c-diagramstorage-{os.environ["REGION"]}'
@@ -40,8 +65,113 @@ def send_message(connection_id, message, event_context):
     except Exception as e:
         print(f"Unexpected error sending message: {str(e)}")
 
+def process_perplexity_request(connection_id, s3_key, request_context):
+    """Process Perplexity request for CDK modules breakdown"""
+    print(f"Starting Perplexity CDK modules for connection: {connection_id}, S3 key: {s3_key}")
+    
+    try:
+        # Get image from S3
+        response = s3_client.get_object(Bucket=s3_image_bucket, Key=s3_key)
+        image_bytes = response['Body'].read()
+        image_data = base64.b64encode(image_bytes).decode('utf-8')
+        
+        # Get API key
+        api_key = get_perplexity_api_key()
+        
+        # Create image data URI
+        image_data_uri = f"data:image/png;base64,{image_data}"
+        
+        # Prepare request for Perplexity with image
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'model': 'sonar-pro',
+            'messages': [
+                {
+                    'role': 'user',
+                    'content': [
+                        {'type': 'text', 'text': config['cdk_modules_prompt']},
+                        {'type': 'image_url', 'image_url': {'url': image_data_uri}}
+                    ]
+                }
+            ],
+            'stream': True
+        }
+        
+        # Make streaming request to Perplexity
+        http = urllib3.PoolManager()
+        response = http.request(
+            'POST',
+            'https://api.perplexity.ai/chat/completions',
+            headers=headers,
+            body=json.dumps(payload),
+            preload_content=False
+        )
+        
+        if response.status != 200:
+            raise Exception(f"Perplexity API error: {response.status} - {response.data.decode('utf-8')}")
+        
+        print(f"Perplexity API response status: {response.status}")
+        
+        # Process streaming response
+        buffer = ""
+        for chunk in response.stream(1024):
+            if chunk:
+                buffer += chunk.decode('utf-8')
+                lines = buffer.split('\n')
+                buffer = lines[-1]  # Keep incomplete line in buffer
+                
+                for line in lines[:-1]:
+                    line = line.strip()
+                    print(f"Processing line: {line}")
+                    
+                    if line.startswith('data: '):
+                        data = line[6:].strip()
+                        print(f"Data content: {data}")
+                        
+                        if data == '[DONE]':
+                            print("Received [DONE], sending completion")
+                            send_message(connection_id, {
+                                'type': 'cdk_modules_complete'
+                            }, request_context)
+                            return
+                        
+                        if data and data != '':
+                            try:
+                                chunk_data = json.loads(data)
+                                print(f"Parsed chunk: {chunk_data}")
+                                
+                                if 'choices' in chunk_data and len(chunk_data['choices']) > 0:
+                                    delta = chunk_data['choices'][0].get('delta', {})
+                                    content = delta.get('content', '')
+                                    if content:
+                                        print(f"Sending content: {content}")
+                                        send_message(connection_id, {
+                                            'type': 'cdk_modules_stream',
+                                            'content': content
+                                        }, request_context)
+                            except json.JSONDecodeError as e:
+                                print(f"JSON decode error: {e}, data: {data}")
+                                continue
+        
+        # Send completion if we exit the loop without [DONE]
+        send_message(connection_id, {
+            'type': 'cdk_modules_complete'
+        }, request_context)
+        
+    except Exception as error:
+        print(f"Perplexity CDK modules error: {str(error)}")
+        send_message(connection_id, {
+            'type': 'error',
+            'message': f'CDK modules analysis failed: {str(error)}'
+        }, request_context)
+        raise
+
 def process_bedrock_request(connection_id, s3_key, prompt_type, request_context):
-    """Process Bedrock request with image from S3"""
+    """Process Bedrock request with image from S3 (analysis and optimization only)"""
     print(f"Starting Bedrock {prompt_type} for connection: {connection_id}, S3 key: {s3_key}")
     
     try:
@@ -50,11 +180,9 @@ def process_bedrock_request(connection_id, s3_key, prompt_type, request_context)
         image_bytes = response['Body'].read()
         image_data = base64.b64encode(image_bytes).decode('utf-8')
         
-        # Select prompt based on type
+        # Select prompt based on type (only analysis and optimization)
         if prompt_type == "analysis":
             prompt = config["analysis_prompt"]
-        elif prompt_type == "cdk_modules":
-            prompt = config["cdk_modules_prompt"]
         else:  # optimization
             prompt = config["optimization_prompt"]
         
@@ -151,8 +279,8 @@ def handler(event, context):
             # Process analysis first
             process_bedrock_request(connection_id, s3_key, 'analysis', request_context)
             
-            # Then process CDK modules
-            process_bedrock_request(connection_id, s3_key, 'cdk_modules', request_context)
+            # Then process CDK modules using Perplexity
+            process_perplexity_request(connection_id, s3_key, request_context)
             
         elif action == 'cdk_modules':
             # Get S3 key for image
@@ -165,7 +293,7 @@ def handler(event, context):
                 }, request_context)
                 return {'statusCode': 400}
             
-            process_bedrock_request(connection_id, s3_key, 'cdk_modules', request_context)
+            process_perplexity_request(connection_id, s3_key, request_context)
             
         elif action == 'optimize':
             # Get S3 key for image

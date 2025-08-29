@@ -1,0 +1,5 @@
+.image-viewer-container{
+    border: 1px solid gray;
+    background: gray;
+    overflow: hidden;
+}
