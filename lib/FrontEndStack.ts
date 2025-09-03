@@ -31,7 +31,10 @@ export class FrontEndStack extends cdk.Stack {
   public readonly userPoolDomain: cognito.UserPoolDomain;
 
   constructor(scope: Construct, id: string, props: Props) {
-    super(scope, id, props);
+    super(scope, id, {
+      ...props,
+      description: 'Guidance for Generating Infrastructure-as-Code Templates from Architecture Diagrams on AWS ( SO9015 )'
+    });
 
     // ===== Lambda for /api =====
     this.responderLambda = new lambda.DockerImageFunction(this, 'webResponder', {

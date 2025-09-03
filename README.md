@@ -71,7 +71,7 @@ Open the project folder in your IDE and edit the following files:
 - export_vars.sh - This file contains all of the necessary deployment configuration environment variables. Update the placeholder values with the correct ones for your targeted deployment account.
 - (OPTIONAL) package.json  - The config section of this file can be modified to change the Application Name and CDK Qualifier
 - (OPTIONAL) cdk.json - The CDK Qualifier must also be updated here if modifying.
-- (OPTIONAL) bin/datahackathon.ts - Update the recipientEmailAddresses array under the ProcessingStack with user emails who wish to receive notifications when newly generated code is uploaded to the S3 output bucket. 
+- (OPTIONAL) bin/app.ts - Update the recipientEmailAddresses array under the ProcessingStack with user emails who wish to receive notifications when newly generated code is uploaded to the S3 output bucket. 
 
 ### 3. Make the script executable and source the variables
 Open your IDE CLI and run the follwing commands:

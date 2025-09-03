@@ -11,7 +11,10 @@ export class StorageStack extends cdk.Stack {
   public readonly codeOutputBucket: s3.Bucket;
 
   constructor(scope: Construct, id: string, props: Props) {
-    super(scope, id, props);
+    super(scope, id, {
+      ...props,
+      description: 'Guidance for Generating Infrastructure-as-Code Templates from Architecture Diagrams on AWS ( SO9015 )'
+    });
 
     //Define bucket props
     const bucketProps = {

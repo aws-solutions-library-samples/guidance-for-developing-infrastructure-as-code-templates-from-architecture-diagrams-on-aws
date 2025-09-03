@@ -17,7 +17,10 @@ interface Props extends cdk.StackProps {
 
 export class ProcessingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
-    super(scope, id, props);
+    super(scope, id, {
+      ...props,
+      description: 'Guidance for Generating Infrastructure-as-Code Templates from Architecture Diagrams on AWS ( SO9015 )'
+    });
 
     const processingLambda = new lambda.DockerImageFunction(this, 'codeGenerator', {
       functionName: `${props.applicationQualifier}-code-generator`,
