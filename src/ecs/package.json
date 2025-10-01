@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@cloudscape-design/components": "^3.0.949",
+    "@cloudscape-design/chat-components": "^1.0.0",
+    "@cloudscape-design/components": "^3.0.1072",
     "@cloudscape-design/global-styles": "^1.0.42",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -13,11 +14,14 @@
     "@types/node": "^16.18.126",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "@types/uuid": "^10.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
     "react-scripts": "^5.0.1",
     "typescript": "^4.9.5",
+    "usehooks-ts": "^3.1.1",
+    "uuid": "^11.1.0",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

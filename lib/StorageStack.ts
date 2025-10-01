@@ -11,10 +11,7 @@ export class StorageStack extends cdk.Stack {
   public readonly codeOutputBucket: s3.Bucket;
 
   constructor(scope: Construct, id: string, props: Props) {
-    super(scope, id, {
-      ...props,
-      description: 'Guidance for Generating Infrastructure-as-Code Templates from Architecture Diagrams on AWS ( SO9015 )'
-    });
+    super(scope, id, props);
 
     //Define bucket props
     const bucketProps = {
@@ -28,6 +25,12 @@ export class StorageStack extends cdk.Stack {
       bucketName: `${this.account}-${props.applicationQualifier}-diagramstorage-${this.region}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      cors: [{
+        allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
+        allowedOrigins: ['*'],
+        allowedHeaders: ['*'],
+        maxAge: 3000
+      }]
     });
 
     // Create S3 bucket for generated CDK code

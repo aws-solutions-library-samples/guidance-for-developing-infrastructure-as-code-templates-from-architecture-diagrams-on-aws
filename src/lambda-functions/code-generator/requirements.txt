@@ -6,3 +6,5 @@ botocore
 openai
 aiohttp
 pyyaml
+strands-agents
+strands-agents-tools

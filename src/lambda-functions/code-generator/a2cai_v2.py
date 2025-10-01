@@ -347,7 +347,7 @@ async def generate_staging_file (staging_prompt_dict, code_language, local_dir, 
     return codefilepath
     
 async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, stack_generation_prompt_dict, api_key, model_name):
-    
+    from utils2_v2 import send_progress_update
     
     stack_dirname , stack_logfiles_dir =get_stack_name()
     print("stack_dirname" , stack_dirname)
@@ -358,50 +358,47 @@ async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, 
     staging_prompt_template=prompt_config_dict['staging_prompt_template']        # prompt Template to generate a staging file
     deployment_sequence_prompt=prompt_config_dict['deployment_sequence_prompt']  
 
-    
-    # Step 1: Download Architecture drawing from  s3
-    
+    # Step 1: Download Architecture drawing from s3
+    await send_progress_update(10)
     image_path = download_file_from_s3(s3_uri, local_dir)
     
     # Step 2: Get encoded image
+    await send_progress_update(20)
+    encoded_image= get_image_data(image_path)
     
-    encoded_image= get_image_data(image_path) 
-    
-    # Step 3: Get Architecture Description 
-    
+    # Step 3: Get Architecture Description
+    await send_progress_update(30)
     arch_description_dict=generate_architecture_description(arch_prompt, encoded_image)
     
-    # Step 4: Render JSON with Modular descriptions derived from Architecture Description
-    
+    # Step 4: Render JSON with Modular descriptions
+    await send_progress_update(40)
     module_descriptions=generate_module_descriptions(arch_description_dict , modules_description_prompt)
 
     # Step 5: Render JSON with Deployment Sequence
-
+    await send_progress_update(50)
     module_descriptions=generate_deployment_sequence(module_descriptions, deployment_sequence_prompt)
     
     # Step 6: Generate Module prompts
-    
+    await send_progress_update(60)
     module_prompt_dict,modules_list = generate_module_prompts(module_descriptions, code_language)
- 
     
     # Step 7: Generate module level stacks asynchronously
-    
-    #module_name=await (modular_stack_generator_main(module_prompt_dict, code_language, local_dir, stack_dirname, stack_logfiles_dir,stack_generation_prompt_dict))
+    await send_progress_update(70)
     responses=await(modular_stack_generator_main(module_prompt_dict, code_language, local_dir, stack_dirname, stack_logfiles_dir,stack_generation_prompt_dict, api_key, model_name))
     print("responses from async" , responses)
     
-    #Step 8: Generate Staging Prompt
+    # Step 8: Generate Staging Prompt
+    await send_progress_update(80)
     staging_prompt_dict=generate_staging_prompt(responses, staging_prompt_template, modules_list, code_language)
     print(type(staging_prompt_dict))
     print("STAGING PROMPT DICT" , staging_prompt_dict)
     
-    # Step 9: Generate Staging File to Orchestrate the stacks. 
-    
+    # Step 9: Generate Staging File
+    await send_progress_update(90)
     codefilepath= await (generate_staging_file (staging_prompt_dict, code_language,  local_dir, stack_logfiles_dir,stack_dirname, api_key, model_name))
-    #write_code_to_file(code_str, local_dir,stack_dirname, module_name,code_language)
     
-    # Step 10: zip the directory with the scripts (destpath to be defined)
-    
+    # Step 10: zip the directory
+    await send_progress_update(100)
     zipfilepath = zip_directory(stack_dirname)
     
     return zipfilepath

@@ -1,6 +1,6 @@
-<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true">
+<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true" color="white">
     <path d="M6.15 10.365 8 15.005l1.86-4.64 4.64-1.86-4.64-1.85L8 2.005l-1.85 4.65-4.65 1.85 4.65 1.86Z"
-          class="stroke-linejoin-round"></path>
+          class="stroke-linejoin-round" fill="white"></path>
     <path d="M2.38 4.915c.02.05.07.08.12.08.05 0 .12-.08.12-.08l.66-1.64 1.64-.66a.13.13 0 0 0 .08-.12c0-.05-.08-.12-.08-.12l-1.64-.66-.66-1.64c-.04-.1-.2-.1-.24 0l-.66 1.64-1.64.66a.13.13 0 0 0-.08.12c0 .05.08.12.08.12l1.64.66.66 1.64Z"
-          class="filled no-stroke"></path>
+          class="filled no-stroke" fill="white"></path>
 </svg>
