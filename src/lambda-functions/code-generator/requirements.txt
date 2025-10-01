@@ -1,4 +1,4 @@
-requests==2.32.3
+requests==2.32.4
 boto3==1.40.43
 urllib3==2.2.3
 pybase64==1.4.0
