@@ -1,5 +1,5 @@
-boto3
-botocore
-urllib3
-pybase64
-pyyaml
+boto3==1.40.43
+botocore==1.40.43
+urllib3==2.2.3
+pybase64==1.4.0
+pyyaml==6.0.2
