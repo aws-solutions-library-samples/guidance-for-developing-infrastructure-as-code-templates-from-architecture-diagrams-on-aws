@@ -201,5 +201,9 @@ Customers are responsible for making their own independent assessment of the inf
 Online LLM icon- AI icon  by Merlin D, from The Noun Project CC BY 3.0
 Search Index Icon - Search icon by Wilson Joseph, from The Noun Project CC BY 3.0 
 
+## Improvements Coming Soon
+Front End security improvements
+Improved multi user session handling 
+
 ## Authors
 Srikrishna Chaitanya Konduru, Benjamin Pawlowski, Srikanth Potu, Bertram Varga
