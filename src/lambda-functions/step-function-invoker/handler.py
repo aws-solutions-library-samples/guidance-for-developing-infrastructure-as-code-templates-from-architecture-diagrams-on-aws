@@ -5,8 +5,11 @@ import boto3
 stepfunctions = boto3.client('stepfunctions')
 
 def handler(event, context):
+    # ALB event format uses different structure than API Gateway
+    http_method = event.get('httpMethod') or event.get('requestContext', {}).get('http', {}).get('method')
+    
     # Handle CORS preflight requests
-    if event.get('httpMethod') == 'OPTIONS' or event.get('requestContext', {}).get('http', {}).get('method') == 'OPTIONS':
+    if http_method == 'OPTIONS':
         return {
             'statusCode': 200,
             'headers': {

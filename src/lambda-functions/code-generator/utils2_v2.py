@@ -18,7 +18,7 @@ def get_stack_name():
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    stack_dirname = "a2c-ai-stack" + '-' + str (timestamp)  
+    stack_dirname = "a2a-ai-stack" + '-' + str (timestamp)  
     
     stack_logfiles_dir = stack_dirname + "_logs"
     
@@ -140,7 +140,7 @@ def copy_file_to_s3(local_file_path, bucket_name):
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
-    subdirectory = f'subdirectory/{timestamp}/'
+    subdirectory = f'output/{timestamp}/'
     
     file_name = os.path.basename(local_file_path)
     s3_key = f'{subdirectory}{file_name}'

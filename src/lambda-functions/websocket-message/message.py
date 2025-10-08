@@ -41,7 +41,7 @@ def get_perplexity_api_key():
         raise
 
 # S3 bucket for images
-s3_image_bucket = f'{os.environ["ACCOUNT_ID"]}-a2c-diagramstorage-{os.environ["REGION"]}'
+s3_image_bucket = f'a2a-{os.environ["ACCOUNT_ID"]}-diagramstorage-{os.environ["REGION"]}'
 
 def send_message(connection_id, message, event_context):
     try:

@@ -2,11 +2,24 @@ import json
 import os
 import boto3
 
-s3_client = boto3.client('s3')
+# Configure S3 client with regional endpoint
+s3_client = boto3.client('s3', 
+    region_name=os.environ['REGION'],
+    config=boto3.session.Config(
+        s3={'addressing_style': 'virtual'},
+        signature_version='s3v4'
+    )
+)
 
 def handler(event, context):
+    print(f"Event: {json.dumps(event)}")
+    
+    # ALB event format uses different structure than API Gateway
+    http_method = event.get('httpMethod') or event.get('requestContext', {}).get('http', {}).get('method')
+    
     # Handle CORS preflight requests
-    if event.get('httpMethod') == 'OPTIONS' or event.get('requestContext', {}).get('http', {}).get('method') == 'OPTIONS':
+    if http_method == 'OPTIONS':
+        print("Handling OPTIONS request")
         return {
             'statusCode': 200,
             'headers': {
@@ -20,6 +33,7 @@ def handler(event, context):
         }
 
     try:
+        print("Handling POST request")
         request_body = json.loads(event["body"])
         s3_key = request_body.get('key')
         content_type = request_body.get('contentType')
@@ -36,16 +50,21 @@ def handler(event, context):
             }
         
         # S3 bucket name
-        s3_image_bucket = f'{os.environ["ACCOUNT_ID"]}-a2c-diagramstorage-{os.environ["REGION"]}'
+        s3_image_bucket = f'a2a-{os.environ["ACCOUNT_ID"]}-diagramstorage-{os.environ["REGION"]}'
         
-        # Generate presigned URL for upload
+        # Generate presigned URL for upload with correct configuration
         presigned_url = s3_client.generate_presigned_url(
             'put_object',
-            Params={'Bucket': s3_image_bucket, 'Key': s3_key, 'ContentType': content_type},
-            ExpiresIn=3600
+            Params={
+                'Bucket': s3_image_bucket, 
+                'Key': s3_key, 
+                'ContentType': content_type
+            },
+            ExpiresIn=3600,
+            HttpMethod='PUT'
         )
         
-        return {
+        response = {
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json',
@@ -56,7 +75,10 @@ def handler(event, context):
             'body': json.dumps({'uploadUrl': presigned_url}),
             'isBase64Encoded': False
         }
+        print(f"Response: {json.dumps(response)}")
+        return response
     except Exception as e:
+        print(f"Error: {str(e)}")
         return {
             'statusCode': 500,
             'headers': {

@@ -1,6 +1,6 @@
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
-const name = "cognitoClientSecrets-frontend";
+const name = "a2a-cognitoClientSecrets-frontend";
 const primarySecretManager = new SecretsManagerClient({
   region: 'us-east-1', // Lambda@Edge always runs in us-east-1
 });

@@ -1,4 +1,4 @@
-# Guidance to Generate IaC Templates Directly from Architecture Diagrams
+# Guidance for Generating IaC Templates Directly from Architecture Diagrams
 
 ## Table of Contents
 - [Overview](#overview)
@@ -22,18 +22,18 @@ In addition, for architecture drawings that have higher levels of complexity, hi
 
 This guidance helps users to produce accurate, natively modular, nuanced AWS CDK stacks in Python and TypeScript with the CDK constructs/syntax retrieved from the latest AWS CDK release, only using an architecture drawing. In addition, the required IAM Roles and permissions are also identified automatically and added to the stacks automatically during the code generation process. This is achieved using highly optimized Chain of Thought (CoT)  prompting for IaC generation in combination with multi step reasoning and search grounding capabilities of online LLM’s.
 
-Architec2Code AI  with its intrinsic multi-agentic design , leverages the multimodal capabilities of LLMs in combination with carefully optimized Prompts to produce a nuanced understanding of the provided architecture - analyzing not only the individual resources present, but distinct functional modules, interactions between AWS resources or account boundaries that maybe depicted in the architecture, informing the code generation process accordingly.
+Architec2App AI  with its intrinsic multi-agentic design , leverages the multimodal capabilities of LLMs in combination with carefully optimized Prompts to produce a nuanced understanding of the provided architecture - analyzing not only the individual resources present, but distinct functional modules, interactions between AWS resources or account boundaries that maybe depicted in the architecture, informing the code generation process accordingly.
 
-![Solution Architecture](docs/a2c-architecture.png)
+![Solution Architecture](docs/architecture.png)
 
 1. An Amazon ECS Fargate service behind an Application Load Balancer hosts the React webserver for the application frontend. It accepts the architecture diagram uploaded by the user as an input 
 2. The uploaded diagrams are stored on a Amazon Simple Storage Service (Amazon S3) bucket. 
 3. The web responder Lambda invokes Amazon Bedrock API to perform an Image analysis.
 4. A comprehensive summary of the architecture describing use case, workflow and the different AWS services used is generated and returned to the frontend.  
 5. The generated architecture description is further passed to a chain of thought processing for AWS CDK code generation. 
-6. The step function workflow generates a modular AWS CDK stack in the language of choice provided by the user.
-7. The generated  code is stored in a Amazon Simple Storage Service (Amazon S3) bucket.
-8. After a successful execution of the workflow, users receives a Amazon Simple Notification Service (Amazon SNS) notification with a pre-signed URL to download the generated AWS CDK scripts as a zip file. A prior subscription to the SNS topic from the user is a pre-requisite to receive the said notifications .
+6. The step function workflow generates modular AWS CDK stacks in the language of choice provided by the user.
+7. The generated code is stored in a Amazon Simple Storage Service (Amazon S3) bucket.
+8. After a successful execution of the workflow, users receives a success notification on the webpage with a pre-signed URL to download the generated AWS CDK scripts as a zip file.
 
 ### Cost
 You are responsible for the cost of the AWS services used while running this Guidance. The cost for running this Guidance with the default settings in the us-west-2 (Oregon) region is approximately $20 per month for conversion of around 50 architecture diagrams to IaC. Also major portion of the costs is a fixed cost related to the ECS, Fargate, and Application Load Balancer services being used to host the React web application. 
@@ -52,12 +52,12 @@ Perplexity API Key - Perplexity account and subscription required.
 NOTE: Our team has evaluated Perplexity to provide the best results for this use case. Other providers can be substituted in place of Perplexity as is determined to best suit your requirements. To replace Perplexity with another model, update the code_generator_utils_v2.py file within the code-generator Lambda function with the url of the alternative model and obtain an API key. Customer's use of Perplexity or another third-party tool of their choosing is subject to the terms and conditions of such tool and it is Customer's sole responsibility to ensure they oblige by such terms.
 
 ### AWS Account Requirements
-Approved Bedrock access to Claude 3.5 Sonnet and Claude 3.7 Sonnet in the desired deployment region.
+Approved Bedrock access to Claude 4.0 Sonnet in the desired deployment region.
 
 ### Supported Regions
 Any region that supports the required Claude models on Bedrock is a viable deployment target. 
 This currently includes: us-east-1, us-west-2, eu-central-1, ap-northeast-1, and ap-southeast-1.
-NOTE: us-east-1 is currently experiencing throttling issues with Claude 3.7 Sonnet. Deployment to other regions is strongly advised.
+NOTE: us-east-1 is currently experiencing throttling issues with Claude 4.0 Sonnet. Deployment to other regions is strongly advised.
 
 ## Deployment Steps
 
@@ -69,9 +69,7 @@ git clone git@github.com:aws-solutions-library-samples/guidance-for-developing-i
 ### 2. Edit configuration files
 Open the project folder in your IDE and edit the following files:
 - export_vars.sh - This file contains all of the necessary deployment configuration environment variables. Update the placeholder values with the correct ones for your targeted deployment account.
-- (OPTIONAL) package.json  - The config section of this file can be modified to change the Application Name and CDK Qualifier
-- (OPTIONAL) cdk.json - The CDK Qualifier must also be updated here if modifying.
-- (OPTIONAL) bin/app.ts - Update the recipientEmailAddresses array under the ProcessingStack with user emails who wish to receive notifications when newly generated code is uploaded to the S3 output bucket. 
+- (OPTIONAL) package.json  - The config section of this file can be modified to change the Application Name
 
 ### 3. Make the script executable and source the variables
 Open your IDE CLI and run the follwing commands:
@@ -82,19 +80,30 @@ source export_vars.sh
 NOTE: For updates and future deplyoments, the 'source' command needs to be run every time a new CLI session is created to set the environment variables.
 
 ### 4. Install dependencies
-Install the required CDK dependencies.
+Install the required CDK dependencies for the project.
 ```bash
 npm ci
 ```
+Install the required dependencies for the Node.js CloudFront edge lambda function
+```bash
+cd src/lambda-functions/edge-lambda
+npm install
+cd ../../..
+```
 
 ### 5. Bootstrap the account
-Prepare the account for CDK deployment.
+Prepare the account for CDK deployment. 
+Bootstrap the us-east-1 region. This is required for CloudFront deployment.
 ```bash
-cdk bootstrap --profile $AWS_PROFILE --qualifier ${CDK_QUALIFIER} aws://${AWS_ACCOUNT_ID}/${AWS_REGION}
+cdk bootstrap --profile $AWS_PROFILE aws://${AWS_ACCOUNT_ID}/us-east-1
+```
+Bootstrap the region targeted for application deployment. This command is only necessary if a region other than us-east-1 is used.
+```bash
+cdk bootstrap --profile $AWS_PROFILE aws://${AWS_ACCOUNT_ID}/${AWS_REGION}
 ```
 
 ### 6. Create AWS Secret and Upload API Key
-In the AWS Console, navigate to Secrets Manager create a new secret with the name 'A2C_API_KEY' and the value set to your Perplexity API key.
+In the AWS Console, navigate to Secrets Manager in the target deployment region and create a new secret with the name 'A2A_API_KEY' and value set to your Perplexity API key.
 
 ### 7. Deploy
 Deploy the project using CDK.
@@ -106,24 +115,24 @@ cdk deploy --all --require-approval never
 
 1. **CloudFormation Verification**  
    - Confirm successful creation of three stacks in CloudFormation:  
-     - `A2C-AI-StorageStack`  
-     - `A2C-AI-ProcessingStack`  
-     - `A2C-AI-FrontEndStack`  
+     - `A2A-AI-StorageStack`  
+     - `A2A-AI-ProcessingStack`  
+     - `A2A-AI-FrontEndStack`  
 
 2. **ECS Service Validation**  
    - In the Amazon ECS console, verify:  
-     - The `a2c-ECS-Cluster` is in **ACTIVE** status  
-     - There are running tasks for the `A2C-AI-FrontEndStack-a2cALBfargateserviceService` family  
+     - The `ECS-Cluster` is in **ACTIVE** status  
+     - There are running tasks for the `A2A-AI-FrontEndStack-ALBfargateserviceService` family  
      - The number of healthy tasks matches the desired count  
 
 3. **Load Balancer Check**  
    - In the EC2 Console under Load Balancers:  
-     - Confirm the Application Load Balancer (`A2C-AI-a2cAL`) is healthy  
+     - Confirm the Application Load Balancer (`A2A-AI-AL`) is healthy  
      - The associated target group shows healthy ECS tasks as registered targets  
 
 4. **Web Application Access**  
    - Retrieve the ALB DNS name from:  
-     - The **Outputs** tab of the `A2C-AI-FrontEndStack` in CloudFormation  
+     - The **Outputs** tab of the `A2A-AI-FrontEndStack` in CloudFormation  
      - Or from the Load Balancer console under DNS name  
    - Access the application via `http://<ALB-DNS-NAME>`  
    - **Note:** The application is accessible over HTTP only. Ensure your browser is not redirecting to HTTPS if you encounter connection issues.  
@@ -134,7 +143,7 @@ cdk deploy --all --require-approval never
 ## Running the Guidance
 1. Navigate to the web page
 2. Upload a high quality PNG image of a AWS Architecture diagram for any Data Platform type architecture. These are generally derived from the AWS Modern Data Architecture Framework - reflecting capabilities for streaming, ETL, ingestion type architectures encompassing AWS Data, Analytics and Database services. A folder of architecture diagram samples has been provided in this repo.
-3. A2C AI will first analyse the drawing and provide a response to the answer with a description of what it sees, also initiating the workflow for code synthesis in parallel. 
+3. A2A AI will first analyse the drawing and provide a response to the answer with a description of what it sees, also initiating the workflow for code synthesis in parallel. 
 4. Once the code synthesis is completed, the results will be uploaded to the code output S3 bucket under a folder named with the date and time of the event. If email addresses were added to the SNS topic, then a completion notification with a link to download the code from S3 will also be recieved.
 
 ## Next Steps
@@ -145,11 +154,11 @@ Users can explore the following customizations to adapt/optimize the solution to
 2. Email notifications to end users: By default, this solution deploys an SNS topic that is intended for administrators to add their emails to. They will automatically be subscribed to the topic upon solution deployment and will receive a notification every time the service is used, along with a link to download the code output from S3. In order to enable webpage email input, SES can be integrated into the solution by having the Processing Lambda function send its output notifications to SES in addition to SNS. The solution is already configured to pass along a user’s email in the event payload to the Processing Lambda. Proper IAM permissions must be added to the function and SES configuration must be completed in the account separately.
 
 ## Cleanup
-Delete all 3 A2C Cloudformation stacks using the Cloudformation console or CDK destroy commands. All three S3 buckets deployed in this solution will automatically be emptied and deleted upon stack removal. Remove stacks in the following order to avoid failures due to cross-stack dependencies.
+Delete all 3 A2A Cloudformation stacks using the Cloudformation console or CDK destroy commands. All three S3 buckets deployed in this solution will automatically be emptied and deleted upon stack removal. Remove stacks in the following order to avoid failures due to cross-stack dependencies.
 ```bash
-cdk destroy A2C-AI-FrontEndStack
-cdk destroy A2C-AI-ProcessingStack
-cdk destroy A2C-AI-StorageStack
+cdk destroy A2A-AI-FrontEndStack
+cdk destroy A2A-AI-ProcessingStack
+cdk destroy A2A-AI-StorageStack
 ```
 NOTE: If the Front-End stack was deployed using default settings, a new VPC has been created for the ALB. This CloudFormation stack deletion will fail and require manual component deletion of a VPC endpoint and associated subnet.
 

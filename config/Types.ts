@@ -2,7 +2,6 @@ import { IVpcStackConfig } from './VpcConfig';
 
 export interface IAppConfig {
   applicationName: string;
-  applicationQualifier: string;
   deploymentAccount: string;
   region: string;
   vpc: IVpcStackConfig;

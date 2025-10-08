@@ -28,7 +28,7 @@ def get_api_key_from_secrets():
     
 async def async_lambda_handler(event, context):
     """
-    AWS Lambda handler function that orchestrates the A2C AI code generation process.
+    AWS Lambda handler function that orchestrates the A2A AI code generation process.
     Loads configuration from YAML files, sets up prompts and parameters,
     and calls the a2c_ai_do_it_all function to generate code from an architecture diagram.
 
