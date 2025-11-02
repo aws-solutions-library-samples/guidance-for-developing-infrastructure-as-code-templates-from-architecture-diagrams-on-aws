@@ -23,7 +23,7 @@ export async function triggerStepFunction(s3Key: string, language: string) {
 
     await fetch(stepFunctionUrl, {
         body: JSON.stringify({
-            file_path: `s3://ACCOUNT_ID-a2c-diagramstorage-REGION/${s3Key}`,
+            file_path: `s3://a2a-ACCOUNT_ID-diagramstorage-REGION/${s3Key}`,
             code_language: language
         }),
         method: "POST",

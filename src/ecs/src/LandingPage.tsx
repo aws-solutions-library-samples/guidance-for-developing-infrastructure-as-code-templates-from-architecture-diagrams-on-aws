@@ -39,14 +39,14 @@ export default function (props: { onGetStarted: () => void }) {
                 <ColumnLayout columns={2} variant={"default"}>
                     <div className={"columnLayoutContent"}>
                         <h3>Prompt Free codebase Generation</h3>
-                        <p> Our autonomous Agentic system can generate a nuanced Infrastructure as Code directly fom the Architecture Diagram, 
+                        <p> Our autonomous Agentic system can generate nuanced Infrastructure as Code directly fom the Architecture Diagram, 
                         without any additional prompting </p>
                         <h3>Enforce security with enterprise-grade access controls</h3>
                         <p>Architec2App AI can be configured to respect organisational development specs. Generated Code is natively compliant with your standards</p>
                     </div>
                     <div className={"columnLayoutContent"}>
                         <h3>Optimize Architectures with our Optimization Agents</h3>
-                        <p>Architec2App AI provides a nuanced Blueprint for exploring optimization opportunities 
+                        <p>Architec2App AI provides a nuanced blueprint for exploring optimization opportunities 
                             for the provided Architecture Diagram. Agents analyse the drawing along different dimensions - cost, security
                             performance and provide reocmmendations with reliable  information sources retrieved from the Web</p>
                         <h3>Boost time to value with  Ultra fast iteration </h3>
@@ -57,7 +57,7 @@ export default function (props: { onGetStarted: () => void }) {
             </Container>
             <h2>Use cases</h2>
             <Container>1. Rapid generation of entire codebases from Architecture drawings 
-                       2. Optimisation apportunity analysis for Architecture Drawings </Container>
+                       2. Optimisation opportunity analysis for Architecture Drawings </Container>
         </div>
     </ContentLayout>
 

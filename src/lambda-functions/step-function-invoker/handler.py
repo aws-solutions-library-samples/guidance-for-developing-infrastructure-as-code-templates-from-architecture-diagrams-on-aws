@@ -5,8 +5,11 @@ import boto3
 stepfunctions = boto3.client('stepfunctions')
 
 def handler(event, context):
+    # ALB event format uses different structure than API Gateway
+    http_method = event.get('httpMethod') or event.get('requestContext', {}).get('http', {}).get('method')
+    
     # Handle CORS preflight requests
-    if event.get('httpMethod') == 'OPTIONS' or event.get('requestContext', {}).get('http', {}).get('method') == 'OPTIONS':
+    if http_method == 'OPTIONS':
         return {
             'statusCode': 200,
             'headers': {
@@ -37,7 +40,7 @@ def handler(event, context):
             }
         
         # Construct Step Function ARN
-        step_function_arn = f'arn:aws:states:{os.environ["REGION"]}:{os.environ["ACCOUNT_ID"]}:stateMachine:{os.environ["CDK_QUALIFIER"]}-Processing'
+        step_function_arn = f'arn:aws:states:{os.environ["REGION"]}:{os.environ["ACCOUNT_ID"]}:stateMachine:A2A-Processing'
         
         # Invoke Step Function
         response = stepfunctions.start_execution(

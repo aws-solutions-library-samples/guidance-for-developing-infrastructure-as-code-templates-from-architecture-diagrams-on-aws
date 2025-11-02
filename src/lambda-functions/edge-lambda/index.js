@@ -17,6 +17,45 @@ exports.handler = async (request) => {
   try {
     console.log('Lambda@Edge handler started', JSON.stringify(request, null, 2));
     
+    // Extract the URI and method from the request
+    const uri = request.Records[0].cf.request.uri;
+    const method = request.Records[0].cf.request.method;
+    console.log('Request URI:', uri, 'Method:', method);
+    
+    // Handle OPTIONS requests for API endpoints with CORS headers
+    if (method === 'OPTIONS' && uri.startsWith('/api/')) {
+      console.log('Handling OPTIONS request for API endpoint');
+      return {
+        status: '200',
+        statusDescription: 'OK',
+        headers: {
+          'access-control-allow-origin': [{
+            key: 'Access-Control-Allow-Origin',
+            value: '*'
+          }],
+          'access-control-allow-methods': [{
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, OPTIONS, PUT, DELETE'
+          }],
+          'access-control-allow-headers': [{
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, X-Amz-Date, Authorization, X-Api-Key, X-Amz-Security-Token'
+          }],
+          'access-control-max-age': [{
+            key: 'Access-Control-Max-Age',
+            value: '86400'
+          }]
+        },
+        body: ''
+      };
+    }
+    
+    // Allow unauthenticated access to API endpoints
+    if (uri.startsWith('/api/')) {
+      console.log('API endpoint detected, allowing unauthenticated access');
+      return request.Records[0].cf.request;
+    }
+    
     const secrets = await secretsManager.getSecrets();
     console.log('Secrets retrieved successfully');
     
