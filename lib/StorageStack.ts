@@ -3,7 +3,6 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 
 interface Props extends cdk.StackProps {
-  applicationQualifier: string;
 }
 
 export class StorageStack extends cdk.Stack {
@@ -22,7 +21,7 @@ export class StorageStack extends cdk.Stack {
     //Create S3 bucket for user uploaded images
     this.diagramStorageBucket = new s3.Bucket(this, 'StorageBucket', {
       ...bucketProps,
-      bucketName: `${this.account}-${props.applicationQualifier}-diagramstorage-${this.region}`,
+      bucketName: `a2a-${this.account}-diagramstorage-${this.region}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       cors: [{
@@ -35,7 +34,7 @@ export class StorageStack extends cdk.Stack {
 
     // Create S3 bucket for generated CDK code
     this.codeOutputBucket = new s3.Bucket(this, 'codeOutputBucket', {
-      bucketName: `${this.account}-${props.applicationQualifier}-codeoutput-${this.region}`,
+      bucketName: `a2a-${this.account}-codeoutput-${this.region}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     });

@@ -25,8 +25,7 @@
     "commitlint": "commitlint --edit"
   },
   "config": {
-    "applicationName": "A2C-AI",
-    "cdkQualifier": "a2c"
+    "applicationName": "A2A-AI"
   },
   "devDependencies": {
     "@commitlint/cli": "18.0.0",
@@ -39,7 +38,7 @@
     "@typescript-eslint/parser": "6.7.0",
     "aws-cdk": "^2.176.0",
     "concurrently": "8.2.2",
-    "cz-conventional-changelog": "3.3.0",
+    "cz-conventional-changelog": "^3.0.1",
     "eslint": "^8.57.0",
     "eslint-config-standard-with-typescript": "^43.0.1",
     "eslint-plugin-import": "^2.29.1",

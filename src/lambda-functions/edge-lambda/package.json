@@ -2,7 +2,7 @@
   "name": "edge-lambda",
   "version": "1.0.0",
   "dependencies": {
-    "cognito-at-edge": "1.5.3",
-    "@aws-sdk/client-secrets-manager": "^3.0.0"
+    "@aws-sdk/client-secrets-manager": "^3.0.0",
+    "cognito-at-edge": "^1.5.4"
   }
 }

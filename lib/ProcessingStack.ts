@@ -12,7 +12,6 @@ import { Construct } from 'constructs';
 interface Props extends cdk.StackProps {
   diagramStorageBucket: cdk.aws_s3.Bucket;
   codeOutputBucket: cdk.aws_s3.Bucket;
-  applicationQualifier: string;
 }
 
 export class ProcessingStack extends cdk.Stack {
@@ -24,7 +23,7 @@ export class ProcessingStack extends cdk.Stack {
 
     // DynamoDB table for WebSocket connections
     this.connectionsTable = new dynamodb.Table(this, 'WebSocketConnections', {
-      tableName: `${props.applicationQualifier}-websocket-connections`,
+      tableName: `a2a-websocket-connections`,
       partitionKey: { name: 'connectionId', type: dynamodb.AttributeType.STRING },
       timeToLiveAttribute: 'ttl',
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -33,11 +32,11 @@ export class ProcessingStack extends cdk.Stack {
 
     // WebSocket API Gateway
     this.webSocketApi = new apigatewayv2.WebSocketApi(this, 'WebSocketApi', {
-      apiName: `${props.applicationQualifier}-websocket-api`,
+      apiName: `a2a-websocket-api`,
     });
 
     const processingLambda = new lambda.DockerImageFunction(this, 'codeGenerator', {
-      functionName: `${props.applicationQualifier}-code-generator`,
+      functionName: `a2a-code-generator`,
       code: lambda.DockerImageCode.fromImageAsset('src/lambda-functions/code-generator'),
       memorySize: 1024,
       timeout: cdk.Duration.minutes(15),
@@ -100,13 +99,13 @@ export class ProcessingStack extends cdk.Stack {
 
 
     const stateMachine = new sfn.StateMachine(this, 'StateMachine', {
-      stateMachineName: `${props.applicationQualifier}-Processing`,
+      stateMachineName: `A2A-Processing`,
       definition: lambdaProcessingTask,
     });
 
     // WebSocket Lambda functions
     const connectHandler = new lambda.Function(this, 'WebSocketConnect', {
-      functionName: `${props.applicationQualifier}-websocket-connect`,
+      functionName: `a2a-websocket-connect`,
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'connect.handler',
       code: lambda.Code.fromAsset('src/lambda-functions/websocket-connect'),
@@ -116,7 +115,7 @@ export class ProcessingStack extends cdk.Stack {
     });
 
     const disconnectHandler = new lambda.Function(this, 'WebSocketDisconnect', {
-      functionName: `${props.applicationQualifier}-websocket-disconnect`,
+      functionName: `a2a-websocket-disconnect`,
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'disconnect.handler',
       code: lambda.Code.fromAsset('src/lambda-functions/websocket-disconnect'),
@@ -126,7 +125,7 @@ export class ProcessingStack extends cdk.Stack {
     });
 
     const messageHandler = new lambda.Function(this, 'WebSocketMessage', {
-      functionName: `${props.applicationQualifier}-websocket-message`,
+      functionName: `a2a-websocket-message`,
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'message.handler',
       code: lambda.Code.fromAsset('src/lambda-functions/websocket-message'),

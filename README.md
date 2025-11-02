@@ -1,12 +1,13 @@
-# Agentic August Hackathon - Architect2App AI
+# Guidance for Generating IaC Templates Directly from Architecture Diagrams
 
 ## Table of Contents
 - [Overview](#overview)
+  - [Cost](#cost)
 - [Prerequisites](#prerequisites)
   - [Operating System](#operating-system)
 - [Deployment Steps](#deployment-steps)
 - [Deployment Validation](#deployment-validation)
-- [Running the Solution](#running-the-solution)
+- [Running the Guidance](#running-the-guidance)
 - [Next Steps](#next-steps)
 - [Cleanup](#cleanup)
 - [FAQ, Known Issues, Additional Considerations, and Limitations](#faq-known-issues-additional-considerations-and-limitations)
@@ -15,29 +16,33 @@
 - [Authors](#authors)
 
 ## Overview
-The Journey from Architecture drawings to their deployment can be vastly accelerated by leveraging the potential of Large Language Models. However, given that Infrastructure as Code(IaC) tools like AWS Cloud Development Kit(CDK) evolve rapidly with frequent new releases/updates, leveraging stand alone LLMs trained in the older versions lead to inaccuracies and hallucinations when they are used to produce IaC stacks using AWS CDK.
+The Journey from Architecture drawings to their deployment can be vastly accelerated by leveraging the potential of Large Language Models. However, given that IaC tools like AWS CDK(Cloud Development Kit) evolve rapidly with frequent new releases/updates, leveraging stand alone LLMs trained in the past often leads to inaccuracies and hallucinations when they are used to produce IaC stacks using AWS CDK.
 
-In addition, for architecture drawings that have higher levels of complexity, highly elaborate and nuanced prompts are essential to produce readily deployable IaC templates. Prompting efforts from the user also scale exponentially as the complexity levels of the architecture under consideration are increased. Architec2Code AI only needs a nuanced Architecture drawing with no additional prompts required from the user. 
+In addition, for architecture drawings that have higher levels of complexity, highly elaborate and nuanced prompts are essential to produce truly deployable IaC templates. Prompting efforts from the user also scale exponentially as the complexity levels of the architecture under consideration are increased. Architec2Code AI only expects a nuanced Architecture drawing with no additional prompts required from the user. 
 
-The Architec2Code AI solution produces accurate, natively modular, nuanced AWS CDK stacks in Python and TypeScript with the CDK constructs/syntax retrieved from the latest AWS CDK release, only using an architecture drawing as the input. In addition, the required IAM Roles and permissions are also identified and added to the stacks automatically during the code generation process. This is achieved using highly optimized Chain of Thought (CoT) prompting for IaC generation in combination with multi step reasoning and search grounding capabilities of online LLM’s.
+This guidance helps users to produce accurate, natively modular, nuanced AWS CDK stacks in Python and TypeScript with the CDK constructs/syntax retrieved from the latest AWS CDK release, only using an architecture drawing. In addition, the required IAM Roles and permissions are also identified automatically and added to the stacks automatically during the code generation process. This is achieved using highly optimized Chain of Thought (CoT)  prompting for IaC generation in combination with multi step reasoning and search grounding capabilities of online LLM’s.
 
-Architec2App AI with its intrinsic multi-agentic design, leverages the multimodal capabilities of LLMs in combination with carefully optimized Prompts produces a nuanced understanding of the provided architecture - analyzing not only the individual resources present, but distinct functional modules, interactions between AWS resources or account boundaries that maybe depicted in the architecture, informing the code generation process accordingly.
+Architec2App AI  with its intrinsic multi-agentic design , leverages the multimodal capabilities of LLMs in combination with carefully optimized Prompts to produce a nuanced understanding of the provided architecture - analyzing not only the individual resources present, but distinct functional modules, interactions between AWS resources or account boundaries that maybe depicted in the architecture, informing the code generation process accordingly.
 
-![Solution Architecture](docs/a2a-architecture.png)
+![Solution Architecture](docs/architecture.png)
 
-1. An Amazon ECS Fargate service behind an Application Load Balancer fronted by CloudFront hosts the React webserver for the application frontend. It accepts the architecture diagram uploaded by the user as an input 
+1. An Amazon ECS Fargate service behind an Application Load Balancer hosts the React webserver for the application frontend. It accepts the architecture diagram uploaded by the user as an input 
 2. The uploaded diagrams are stored on a Amazon Simple Storage Service (Amazon S3) bucket. 
-3. The websocket-message Lambda invokes Amazon Bedrock API to perform image analysis.
+3. The web responder Lambda invokes Amazon Bedrock API to perform an Image analysis.
 4. A comprehensive summary of the architecture describing use case, workflow and the different AWS services used is generated and returned to the frontend.  
 5. The generated architecture description is further passed to a chain of thought processing for AWS CDK code generation. 
-6. The step function workflow generates a modular AWS CDK stack in the language of choice provided by the user.
-7. The generated  code is stored in a Amazon Simple Storage Service (Amazon S3) bucket.
-8. After a successful execution of the workflow, users receives a notification on the webpage with a pre-signed URL to download the generated AWS CDK scripts as a zip file.
+6. The step function workflow generates modular AWS CDK stacks in the language of choice provided by the user.
+7. The generated code is stored in a Amazon Simple Storage Service (Amazon S3) bucket.
+8. After a successful execution of the workflow, users receives a success notification on the webpage with a pre-signed URL to download the generated AWS CDK scripts as a zip file.
+
+### Cost
+You are responsible for the cost of the AWS services used while running this Guidance. The cost for running this Guidance with the default settings in the us-west-2 (Oregon) region is approximately $20 per month for conversion of around 50 architecture diagrams to IaC. Also major portion of the costs is a fixed cost related to the ECS, Fargate, and Application Load Balancer services being used to host the React web application. 
+ We recommend creating a Budget through AWS Cost Explorer to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance.
 
 ## Prerequisites
 
 ### Operating System
-- Windows, MacOS, or Linux. 
+- This Guidance can be deployed using Windows, MacOS, or Linux. 
 - An IDE, AWS CDK and AWS CLI are required.
 - NPM installed
 - Docker - IMPORTANT: In your Docker settings, verify that "Use containerd for pulling and storing images" is disabled. This setting causes issues with pushing Docker images to AWS ECR
@@ -59,15 +64,12 @@ NOTE: us-east-1 is currently experiencing throttling issues with Claude 4.0 Sonn
 ### 1. Clone Repository
 Clone the Github repo.
 ```bash
-git clone git@ssh.gitlab.aws.dev:vbertrams-experiments/a2c-ai.git
+git clone git@github.com:aws-solutions-library-samples/guidance-for-developing-infrastructure-as-code-templates-from-architecture-diagrams-on-aws.git
 ```
-
 ### 2. Edit configuration files
 Open the project folder in your IDE and edit the following files:
-- export_vars.sh - This file contains all of the necessary deployment configuration environment variables. Update the placeholder values with the correct ones for your targeted deployment account. An export_vars_example.sh file has been inlcuded in the repo to use as a baseline.
-- (OPTIONAL) package.json  - The config section of this file can be modified to change the Application Name and CDK Qualifier
-- (OPTIONAL) cdk.json - The CDK Qualifier must also be updated here if modifying.
-- (OPTIONAL) bin/datahackathon.ts - Update the recipientEmailAddresses array under the ProcessingStack with user emails who wish to receive notifications when newly generated code is uploaded to the S3 output bucket. 
+- export_vars.sh - This file contains all of the necessary deployment configuration environment variables. Update the placeholder values with the correct ones for your targeted deployment account.
+- (OPTIONAL) package.json  - The config section of this file can be modified to change the Application Name
 
 ### 3. Make the script executable and source the variables
 Open your IDE CLI and run the follwing commands:
@@ -78,29 +80,36 @@ source export_vars.sh
 NOTE: For updates and future deplyoments, the 'source' command needs to be run every time a new CLI session is created to set the environment variables.
 
 ### 4. Install dependencies
-Install the required CDK dependencies.
+Install the required CDK dependencies for the project.
 ```bash
 npm ci
 ```
-Install the required CDK dependencies for the CloudFront edge Lambda.
+Install the required dependencies for the Node.js CloudFront edge lambda function
 ```bash
-cd ./src/lambda-functions/edge-lambda && npm install
+cd src/lambda-functions/edge-lambda
+npm install
+cd ../../..
 ```
 
 ### 5. Bootstrap the account
-Prepare the account for CDK deployment.
+Prepare the account for CDK deployment. 
+Bootstrap the us-east-1 region. This is required for CloudFront deployment.
 ```bash
-cdk bootstrap --profile $AWS_PROFILE --qualifier ${CDK_QUALIFIER} aws://${AWS_ACCOUNT_ID}/${AWS_REGION}
+cdk bootstrap --profile $AWS_PROFILE aws://${AWS_ACCOUNT_ID}/us-east-1
+```
+Bootstrap the region targeted for application deployment. This command is only necessary if a region other than us-east-1 is used.
+```bash
+cdk bootstrap --profile $AWS_PROFILE aws://${AWS_ACCOUNT_ID}/${AWS_REGION}
 ```
 
 ### 6. Create AWS Secret and Upload API Key
-In the AWS Console, navigate to Secrets Manager create a new secret with the name 'A2A_API_KEY' and the value set to your Perplexity API key.
+In the AWS Console, navigate to Secrets Manager in the target deployment region and create a new secret with the name 'A2A_API_KEY' and value set to your Perplexity API key.
 
 ### 7. Deploy
 Deploy the project using CDK.
 ```bash
 cdk deploy --all --require-approval never
-````
+```
 
 ## Deployment Validation
 
@@ -112,27 +121,28 @@ cdk deploy --all --require-approval never
 
 2. **ECS Service Validation**  
    - In the Amazon ECS console, verify:  
-     - The `a2a-ECS-Cluster` is in **ACTIVE** status  
-     - There are running tasks for the `A2A-AI-FrontEndStack-a2aALBfargateserviceService` family  
+     - The `ECS-Cluster` is in **ACTIVE** status  
+     - There are running tasks for the `A2A-AI-FrontEndStack-ALBfargateserviceService` family  
      - The number of healthy tasks matches the desired count  
 
 3. **Load Balancer Check**  
    - In the EC2 Console under Load Balancers:  
-     - Confirm the Application Load Balancer (`A2A-AI-a2aAL`) is healthy  
+     - Confirm the Application Load Balancer (`A2A-AI-AL`) is healthy  
      - The associated target group shows healthy ECS tasks as registered targets  
 
 4. **Web Application Access**  
-   - Retrieve the CloudFront URL from:  
+   - Retrieve the ALB DNS name from:  
      - The **Outputs** tab of the `A2A-AI-FrontEndStack` in CloudFormation  
-     - Or from the CloudFront console under the Distribution - Distribution domain name  
-   - Access the application via the URL. Creation of a new Cognito user will be required for first time access.
+     - Or from the Load Balancer console under DNS name  
+   - Access the application via `http://<ALB-DNS-NAME>`  
+   - **Note:** The application is accessible over HTTP only. Ensure your browser is not redirecting to HTTPS if you encounter connection issues.  
 
-> Allow approx. 5 minutes after stack completion for ECS service initialization and container provisioning. The ALB health checks may take 2–3 minutes to show healthy status after tasks become active.
+> Allow 5–7 minutes after stack completion for ECS service initialization and container provisioning. The ALB health checks may take 2–3 minutes to show healthy status after tasks become active.
 
 
-## Running the Solution
+## Running the Guidance
 1. Navigate to the web page
-2. Upload a high quality PNG image of a AWS Architecture diagram for any AWS architecture
+2. Upload a high quality PNG image of a AWS Architecture diagram for any Data Platform type architecture. These are generally derived from the AWS Modern Data Architecture Framework - reflecting capabilities for streaming, ETL, ingestion type architectures encompassing AWS Data, Analytics and Database services. A folder of architecture diagram samples has been provided in this repo.
 3. A2A AI will first analyse the drawing and provide a response to the answer with a description of what it sees, also initiating the workflow for code synthesis in parallel. 
 4. Once the code synthesis is completed, the results will be uploaded to the code output S3 bucket under a folder named with the date and time of the event. If email addresses were added to the SNS topic, then a completion notification with a link to download the code from S3 will also be recieved.
 
@@ -150,7 +160,7 @@ cdk destroy A2A-AI-FrontEndStack
 cdk destroy A2A-AI-ProcessingStack
 cdk destroy A2A-AI-StorageStack
 ```
-NOTE: If the Front-End stack was deployed using default settings, a new VPC has been created for the ALB. This CloudFormation stack deletion will fail and require manual component deletion of certain VPC components due to AWS restrictions on VPC deletion.
+NOTE: If the Front-End stack was deployed using default settings, a new VPC has been created for the ALB. This CloudFormation stack deletion will fail and require manual component deletion of a VPC endpoint and associated subnet.
 
 ## FAQ, known issues, additional considerations, and limitations
 
@@ -183,6 +193,17 @@ It is not mandatory to use the Perplexity API.  Model API’s from other provide
 1. Are there any limitations and known issues in the current IaC templates generated?
 
 For Architecture involving multiple accounts, the application will not produce multiple staging files(app.py/app.ts). These have be written-refactored accordingly. There maybe slight imprecision in the relative imports of the module level stacks  in the staging file. These should be quick and easy to identify and correct. 
+
+
+## Notices
+Customers are responsible for making their own independent assessment of the information in this Guidance. This Guidance: (a) is for informational purposes only, (b) represents AWS current product offerings and practices, which are subject to change without notice, and (c) does not create any commitments or assurances from AWS and its affiliates, suppliers or licensors. AWS products or services are provided “as is” without warranties, representations, or conditions of any kind, whether express or implied. AWS responsibilities and liabilities to its customers are controlled by AWS agreements, and this Guidance is not part of, nor does it modify, any agreement between AWS and its customers.
+
+Online LLM icon- AI icon  by Merlin D, from The Noun Project CC BY 3.0
+Search Index Icon - Search icon by Wilson Joseph, from The Noun Project CC BY 3.0 
+
+## Improvements Coming Soon
+Front End security improvements
+Improved multi user session handling 
 
 ## Authors
 Srikrishna Chaitanya Konduru, Benjamin Pawlowski, Srikanth Potu, Bertram Varga

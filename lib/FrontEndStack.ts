@@ -18,7 +18,6 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 
 interface Props extends cdk.StackProps {
   diagramStorageBucket: s3.Bucket;
-  applicationQualifier: string;
   webSocketUrl?: string;
 }
 
@@ -36,7 +35,7 @@ export class FrontEndStack extends cdk.Stack {
 
     // ===== Lambda for presigned URLs =====
     this.responderLambda = new lambda.Function(this, 'presignedUrlHandler', {
-      functionName: `${props.applicationQualifier}-presigned-url`,
+      functionName: `a2a-presigned-url`,
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('src/lambda-functions/presigned-url'),
@@ -59,7 +58,7 @@ export class FrontEndStack extends cdk.Stack {
 
     // ===== Lambda for Step Function invocation =====
     const stepFunctionInvoker = new lambda.Function(this, 'stepFunctionInvoker', {
-      functionName: `${props.applicationQualifier}-step-function-invoker`,
+      functionName: `a2a-step-function-invoker`,
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('src/lambda-functions/step-function-invoker'),
@@ -67,12 +66,11 @@ export class FrontEndStack extends cdk.Stack {
       environment: {
         ACCOUNT_ID: this.account,
         REGION: this.region,
-        CDK_QUALIFIER: props.applicationQualifier,
       },
       initialPolicy: [
         new iam.PolicyStatement({
           actions: ['states:StartExecution'],
-          resources: [`arn:aws:states:${this.region}:${this.account}:stateMachine:${props.applicationQualifier}-Processing`],
+          resources: [`arn:aws:states:${this.region}:${this.account}:stateMachine:A2A-Processing`],
         }),
       ],
     });
@@ -82,19 +80,19 @@ export class FrontEndStack extends cdk.Stack {
     });
 
     // ===== ECS: Docker Asset, Cluster, ALB =====
-    const asset = new ecr_assets.DockerImageAsset(this, `${props.applicationQualifier}_DockerAsset`, {
+    const asset = new ecr_assets.DockerImageAsset(this, `DockerAsset`, {
       directory: './src/ecs',
       platform: ecr_assets.Platform.LINUX_AMD64,
     });
 
-    this.cluster = new ecs.Cluster(this, `${props.applicationQualifier}-cluster`, {
-      clusterName: `${props.applicationQualifier}-ECS-Cluster`,
+    this.cluster = new ecs.Cluster(this, `cluster`, {
+      clusterName: `A2A-ECS-Cluster`,
       containerInsights: true,
     });
 
     // ==== ALB + Fargate ====
     this.service = new ecs_patterns.ApplicationLoadBalancedFargateService(this,
-      `${props.applicationQualifier}-ALB-fargate-service`, {
+      `ALB-fargate-service`, {
         cluster: this.cluster,
         cpu: 512,
         memoryLimitMiB: 1024,
@@ -111,7 +109,7 @@ export class FrontEndStack extends cdk.Stack {
         protocol: elbv2.ApplicationProtocol.HTTP
       });
 
-    // Create custom security group for ALB that only allows CloudFront traffic
+    // Custom security group for ALB that only allows CloudFront traffic
     const albSecurityGroup = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
       vpc: this.cluster.vpc,
       description: 'Security group for ALB - CloudFront access only',
@@ -196,7 +194,7 @@ export class FrontEndStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '../src/lambda-functions/edge-lambda')),
       handler: "index.handler",
       runtime: lambda.Runtime.NODEJS_22_X,
-      functionName: `${props.applicationQualifier}-cloudfront-auth`,
+      functionName: `a2a-cloudfront-auth`,
       description: "CloudFront Lambda@Edge for Cognito authentication",
       initialPolicy: [
           new iam.PolicyStatement({
@@ -204,14 +202,23 @@ export class FrontEndStack extends cdk.Stack {
               effect: iam.Effect.ALLOW,
               actions: ["secretsmanager:GetSecretValue"],
               resources: [
-                `arn:aws:secretsmanager:us-east-1:${this.account}:secret:cognitoClientSecrets-frontend*`,
-                `arn:aws:secretsmanager:${this.region}:${this.account}:secret:cognitoClientSecrets-frontend*`
+                `arn:aws:secretsmanager:us-east-1:${this.account}:secret:a2a-cognitoClientSecrets-frontend*`,
+                `arn:aws:secretsmanager:${this.region}:${this.account}:secret:a2a-cognitoClientSecrets-frontend*`
               ]
           })
       ]
     });
 
     // ===== CloudFront Distribution pointing to ALB, auth via Edge Lambda =====
+    
+    // CloudFront function to handle CORS OPTIONS requests
+    const corsFunction = new cloudfront.Function(this, 'CorsFunction', {
+      functionName: `a2a-cors-function`,
+      code: cloudfront.FunctionCode.fromFile({
+        filePath: path.join(__dirname, '../src/lambda-functions/cors-function/index.js')
+      }),
+    });
+
     this.cloudFrontDistribution = new cloudfront.Distribution(this, "CloudFrontDistribution", {
       defaultBehavior: {
         origin: new origins.LoadBalancerV2Origin(this.service.loadBalancer, {
@@ -228,6 +235,24 @@ export class FrontEndStack extends cdk.Stack {
         originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
         compress: false,
       },
+      additionalBehaviors: {
+        '/api/*': {
+          origin: new origins.LoadBalancerV2Origin(this.service.loadBalancer, {
+            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+            readTimeout: cdk.Duration.seconds(60)
+          }),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+          responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
+          functionAssociations: [{
+            function: corsFunction,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          }],
+          compress: false,
+        }
+      },
       errorResponses: [
         {
           httpStatus: 403,
@@ -241,7 +266,7 @@ export class FrontEndStack extends cdk.Stack {
         }
       ],
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
-      comment: `${props.applicationQualifier}-frontend-cloudfront`,
+      comment: `a2a-frontend-cloudfront`,
       enableLogging: false,
     });
 
@@ -286,12 +311,12 @@ export class FrontEndStack extends cdk.Stack {
     });
     this.userPoolDomain = this.userPool.addDomain('UserPoolDomain', {
       cognitoDomain: {
-        domainPrefix: `${props.applicationQualifier}-auth-${this.account.substring(0, 8)}`
+        domainPrefix: `a2a-auth-${this.account.substring(0, 8)}`
       }
     });
     // Save Cognito settings as Secrets for access by Lambda@Edge/CloudFront auth Lambda
     const cognitoSecret = new secretsmanager.Secret(this, 'CognitoClientSecrets', {
-      secretName: "cognitoClientSecrets-frontend",
+      secretName: "a2a-cognitoClientSecrets-frontend",
       secretObjectValue: {
         Region: cdk.SecretValue.unsafePlainText(this.region),
         UserPoolID: cdk.SecretValue.unsafePlainText(this.userPool.userPoolId),
