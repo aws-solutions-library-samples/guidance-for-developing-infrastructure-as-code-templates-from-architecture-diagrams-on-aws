@@ -35,6 +35,7 @@ export default function () {
     const [optimizeInProgress, setOptimizeInProgress] = useState(false)
     const [contentType, setContentType] = useState<'analysis' | 'optimization' | null>(null)
     const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
+    const [connectionId, setConnectionId] = useState<string | null>(null)
     const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
     const [currentS3Key, setCurrentS3Key] = useState<string | null>(null)
     const [analysisStartTime, setAnalysisStartTime] = useState<number | null>(null)
@@ -84,6 +85,7 @@ export default function () {
             if (wsConnection) {
                 wsConnection.close();
             }
+            setConnectionId(null);
         };
     }, [isLoading]);
 
@@ -144,12 +146,17 @@ export default function () {
             console.log('WebSocket connected successfully');
             setConnectionStatus('connected');
             setWsConnection(ws);
+            
+            // Send ping to get connection ID
+            ws.send(JSON.stringify({
+                action: 'ping'
+            }));
         };
 
         ws.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                console.log('WebSocket message received:', message.type);
+                console.log('WebSocket message received:', message.type, message);
                 handleWebSocketMessage(message);
             } catch (e) {
                 abortAll('Error parsing WebSocket message:', e)
@@ -160,6 +167,7 @@ export default function () {
             console.log('WebSocket disconnected:', event.code, event.reason);
             setConnectionStatus('disconnected');
             setWsConnection(null);
+            setConnectionId(null);
 
             // Auto-reconnect after 3 seconds if not a normal closure
             if (event.code !== 1000 && isAuthenticated) {
@@ -178,6 +186,10 @@ export default function () {
 
     const handleWebSocketMessage = (message: any) => {
         switch (message.type) {
+            case 'connection_established':
+                setConnectionId(message.connectionId);
+                console.log('Connection ID received:', message.connectionId);
+                break;
             case 'analysis_stream':
                 if (!analysisStartTime) {
                     setAnalysisStartTime(Date.now());
@@ -296,6 +308,11 @@ export default function () {
             return;
         }
 
+        if (!connectionId) {
+            abortAll("Connection ID not available. Please wait a moment and try again.");
+            return;
+        }
+
         try {
             setInProgress(true)
             setAnalysisResponse('')
@@ -321,8 +338,9 @@ export default function () {
             }));
 
             console.log('Upload completed, stored S3 key:', s3Key);
+            console.log('Using connection ID for step function:', connectionId);
 
-            await triggerStepFunction(s3Key, language?.value!)
+            await triggerStepFunction(s3Key, language?.value!, connectionId || undefined)
             setIsCodeSynthesizing(true);
             setCodeSynthesisProgress(0);
         } catch (e) {

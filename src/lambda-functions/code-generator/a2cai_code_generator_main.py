@@ -43,6 +43,10 @@ async def async_lambda_handler(event, context):
     # Extract S3 URI and code language from the event data
     image_s3_uri = event['file_path']
     code_language = event['code_language']
+    connection_id = event.get('connection_id')  # Optional connection ID for targeted WebSocket messages
+    
+    print(f"Code generator received connection_id: {connection_id}")
+    print(f"Full event: {event}")
 
     # Modified section of async_lambda_handler to use secrets
     api_key = get_api_key_from_secrets()        # Check whether the required scripts and config files are present in the Lambda environment
@@ -67,7 +71,7 @@ async def async_lambda_handler(event, context):
 
     # Call main processing function with all configured parameters
     # Returns path to generated zip file containing the code
-    zipfilepath = await a2c_ai_do_it_all(image_s3_uri, storage_dir, code_language, prompt_config_dict, stack_generation_prompt_dict,api_key,model_name)
+    zipfilepath = await a2c_ai_do_it_all(image_s3_uri, storage_dir, code_language, prompt_config_dict, stack_generation_prompt_dict,api_key,model_name, connection_id)
 
     # Upload the generated zip file to S3
     final_s3_path, s3_object_key = copy_file_to_s3(zipfilepath, result_bucket_name)
@@ -75,8 +79,8 @@ async def async_lambda_handler(event, context):
     # Generate a presigned URL for the uploaded file
     presigned_url = generate_presigned_url(result_bucket_name, s3_object_key, expiration=86400)
 
-    # Send WebSocket notification to all connected clients
-    await send_websocket_notification(presigned_url)
+    # Send WebSocket notification to connected client(s)
+    await send_websocket_notification(presigned_url, connection_id)
 
     # Return a dictionary with a downloadable link to the generated code and a success message
     return {

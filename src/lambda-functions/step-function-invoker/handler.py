@@ -27,6 +27,9 @@ def handler(event, context):
         request_body = json.loads(event["body"])
         file_path = request_body.get('file_path')
         code_language = request_body.get('code_language')
+        connection_id = request_body.get('connection_id')
+        
+        print(f"Step function invoker received connection_id: {connection_id}")
         
         if not file_path or not code_language:
             return {
@@ -43,12 +46,20 @@ def handler(event, context):
         step_function_arn = f'arn:aws:states:{os.environ["REGION"]}:{os.environ["ACCOUNT_ID"]}:stateMachine:A2A-Processing'
         
         # Invoke Step Function
+        step_function_input = {
+            "file_path": file_path,
+            "code_language": code_language
+        }
+        
+        # Add connection_id if provided
+        if connection_id:
+            step_function_input["connection_id"] = connection_id
+            
+        print(f"Step function input: {step_function_input}")
+            
         response = stepfunctions.start_execution(
             stateMachineArn=step_function_arn,
-            input=json.dumps({
-                "file_path": file_path,
-                "code_language": code_language
-            })
+            input=json.dumps(step_function_input)
         )
         
         return {

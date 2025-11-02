@@ -3,6 +3,7 @@ import os
 import time
 import boto3
 
+# Store connection without sending immediate message
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['CONNECTIONS_TABLE'])
 

@@ -287,10 +287,12 @@ def load_api_key(file_path):
         print(f"An unexpected error occurred: {e}")
 
 
-async def send_progress_update(progress):
+async def send_progress_update(progress, connection_id=None):
     """
-    Send progress update to all connected WebSocket clients
+    Send progress update to specific connection or all connected WebSocket clients
     """
+    print(f"send_progress_update called with connection_id: {connection_id}")
+    
     try:
         websocket_api_id = os.environ['WEBSOCKET_API_ID']
         connections_table = os.environ['CONNECTIONS_TABLE']
@@ -302,35 +304,54 @@ async def send_progress_update(progress):
         apigateway_client = boto3.client('apigatewaymanagementapi',
                                        endpoint_url=f'https://{websocket_api_id}.execute-api.{region}.amazonaws.com/prod')
         
-        response = table.scan()
-        connections = response.get('Items', [])
-        
         message = {
             'type': 'synthesis_progress',
             'progress': progress
         }
         
-        for connection in connections:
-            connection_id = connection['connectionId']
+        if connection_id:
+            # Send to specific connection
             try:
                 apigateway_client.post_to_connection(
                     ConnectionId=connection_id,
                     Data=json.dumps(message)
                 )
+                print(f"Progress sent to specific connection: {connection_id}")
             except Exception as e:
                 print(f"Failed to send progress to connection {connection_id}: {e}")
+                # Remove stale connection
                 try:
                     table.delete_item(Key={'connectionId': connection_id})
                 except Exception:
                     pass
+        else:
+            # Send to all connections (fallback behavior)
+            response = table.scan()
+            connections = response.get('Items', [])
+            
+            for connection in connections:
+                conn_id = connection['connectionId']
+                try:
+                    apigateway_client.post_to_connection(
+                        ConnectionId=conn_id,
+                        Data=json.dumps(message)
+                    )
+                except Exception as e:
+                    print(f"Failed to send progress to connection {conn_id}: {e}")
+                    try:
+                        table.delete_item(Key={'connectionId': conn_id})
+                    except Exception:
+                        pass
     except Exception as e:
         print(f"Error sending progress update: {e}")
 
 
-async def send_websocket_notification(presigned_url):
+async def send_websocket_notification(presigned_url, connection_id=None):
     """
-    Send WebSocket notification to all connected clients with the presigned URL
+    Send WebSocket notification to specific connection or all connected clients with the presigned URL
     """
+    print(f"send_websocket_notification called with connection_id: {connection_id}")
+    
     try:
         # Get environment variables
         websocket_api_id = os.environ['WEBSOCKET_API_ID']
@@ -344,10 +365,6 @@ async def send_websocket_notification(presigned_url):
         apigateway_client = boto3.client('apigatewaymanagementapi',
                                        endpoint_url=f'https://{websocket_api_id}.execute-api.{region}.amazonaws.com/prod')
         
-        # Get all connections
-        response = table.scan()
-        connections = response.get('Items', [])
-        
         # Prepare message
         message = {
             'type': 'code_ready',
@@ -356,14 +373,14 @@ async def send_websocket_notification(presigned_url):
             'downloadText': 'Click here to download'
         }
         
-        # Send message to all connections
-        for connection in connections:
-            connection_id = connection['connectionId']
+        if connection_id:
+            # Send to specific connection
             try:
                 apigateway_client.post_to_connection(
                     ConnectionId=connection_id,
                     Data=json.dumps(message)
                 )
+                print(f"Message sent to specific connection: {connection_id}")
             except Exception as e:
                 print(f"Failed to send message to connection {connection_id}: {e}")
                 # Remove stale connection
@@ -371,6 +388,25 @@ async def send_websocket_notification(presigned_url):
                     table.delete_item(Key={'connectionId': connection_id})
                 except Exception:
                     pass
+        else:
+            # Send to all connections (fallback behavior)
+            response = table.scan()
+            connections = response.get('Items', [])
+            
+            for connection in connections:
+                conn_id = connection['connectionId']
+                try:
+                    apigateway_client.post_to_connection(
+                        ConnectionId=conn_id,
+                        Data=json.dumps(message)
+                    )
+                except Exception as e:
+                    print(f"Failed to send message to connection {conn_id}: {e}")
+                    # Remove stale connection
+                    try:
+                        table.delete_item(Key={'connectionId': conn_id})
+                    except Exception:
+                        pass
                     
     except Exception as e:
         print(f"Error sending WebSocket notification: {e}")

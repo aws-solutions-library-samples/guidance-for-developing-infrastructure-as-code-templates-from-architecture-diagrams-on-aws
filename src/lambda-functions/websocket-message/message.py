@@ -265,7 +265,15 @@ def handler(event, context):
         
         print(f"Processing action: {action} for connection: {connection_id}")
         
-        if action == 'analyze':
+        if action == 'ping':
+            # Respond with connection ID
+            send_message(connection_id, {
+                'type': 'connection_established',
+                'connectionId': connection_id
+            }, request_context)
+            return {'statusCode': 200}
+            
+        elif action == 'analyze':
             # Get S3 key for image
             s3_key = body.get('s3Key')
             

@@ -187,6 +187,14 @@ export class ProcessingStack extends cdk.Stack {
       })
     );
 
+    // Grant WebSocket API permissions to connect handler
+    connectHandler.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['execute-api:ManageConnections'],
+        resources: [`arn:aws:execute-api:${this.region}:${this.account}:${this.webSocketApi.apiId}/*`],
+      })
+    );
+
     // Output WebSocket URL
     new cdk.CfnOutput(this, 'WebSocketUrl', {
       value: stage.url,
