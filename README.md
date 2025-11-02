@@ -27,7 +27,7 @@ Architec2App AI with its intrinsic multi-agentic design, leverages the multimoda
 
 1. An Amazon ECS Fargate service behind an Application Load Balancer fronted by CloudFront hosts the React webserver for the application frontend. It accepts the architecture diagram uploaded by the user as an input 
 2. The uploaded diagrams are stored on a Amazon Simple Storage Service (Amazon S3) bucket. 
-3. The web responder Lambda invokes Amazon Bedrock API to perform image analysis.
+3. The websocket-message Lambda invokes Amazon Bedrock API to perform image analysis.
 4. A comprehensive summary of the architecture describing use case, workflow and the different AWS services used is generated and returned to the frontend.  
 5. The generated architecture description is further passed to a chain of thought processing for AWS CDK code generation. 
 6. The step function workflow generates a modular AWS CDK stack in the language of choice provided by the user.
