@@ -212,9 +212,9 @@ Online LLM icon- AI icon  by Merlin D, from The Noun Project CC BY 3.0
 Search Index Icon - Search icon by Wilson Joseph, from The Noun Project CC BY 3.0 
 
 ## Improvements Coming Soon
-Front End improvements
-Support for Terraform output
-Generation of supporting files such as Lambda function source code
+- Front End improvements
+- Support for Terraform output
+- Generation of supporting files such as Lambda function source code
 
 ## Authors
 Srikrishna Chaitanya Konduru, Benjamin Pawlowski, Srikanth Potu, Bertram Varga
