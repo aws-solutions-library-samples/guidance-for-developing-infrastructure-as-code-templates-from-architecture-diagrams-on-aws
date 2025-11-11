@@ -24,7 +24,7 @@ This guidance helps users to produce accurate, natively modular, nuanced AWS CDK
 
 Architec2App-AI with its intrinsic multi-agentic design, leverages the multimodal capabilities of LLMs in combination with carefully optimized Prompts to produce a nuanced understanding of the provided architecture - analyzing not only the individual resources present, but distinct functional modules, interactions between AWS resources or account boundaries that maybe depicted in the architecture, informing the code generation process accordingly.
 
-![Solution Architecture](docs/architecture.png)
+![Solution Architecture](docs/SolutionArchitecture.png)
 
 1. A CloudFront distribution provides secure HTTPS access to the application with Lambda@Edge authentication using Amazon Cognito
 2. An Amazon ECS Fargate service behind an Application Load Balancer hosts the React webserver for the application frontend
