@@ -26,6 +26,19 @@ Architec2App-AI with its intrinsic multi-agentic design, leverages the multimoda
 
 ![Solution Architecture](docs/SolutionArchitecture.png)
 
+## Demo
+
+https://github.com/user-attachments/assets/demo-video
+
+*Watch the A2A-AI solution in action: Upload an architecture diagram and see real-time CDK code generation*
+
+<video width="800" controls>
+  <source src="docs/Demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+## Architecture Components
+
 1. A CloudFront distribution provides secure HTTPS access to the application with Lambda@Edge authentication using Amazon Cognito
 2. An Amazon ECS Fargate service behind an Application Load Balancer hosts the React webserver for the application frontend
 3. Amazon Cognito User Pool provides user authentication and authorization
