@@ -3,6 +3,8 @@
 ## Table of Contents
 - [Overview](#overview)
   - [Cost](#cost)
+- [Demo](#demo)
+- [Architecture Components](#architecture-components)
 - [Prerequisites](#prerequisites)
   - [Operating System](#operating-system)
 - [Deployment Steps](#deployment-steps)
@@ -24,18 +26,13 @@ This guidance helps users to produce accurate, natively modular, nuanced AWS CDK
 
 Architec2App-AI with its intrinsic multi-agentic design, leverages the multimodal capabilities of LLMs in combination with carefully optimized Prompts to produce a nuanced understanding of the provided architecture - analyzing not only the individual resources present, but distinct functional modules, interactions between AWS resources or account boundaries that maybe depicted in the architecture, informing the code generation process accordingly.
 
-![Solution Architecture](docs/SolutionArchitecture.png)
-
 ## Demo
-
-https://github.com/user-attachments/assets/demo-video
 
 *Watch the A2A-AI solution in action: Upload an architecture diagram and see real-time CDK code generation*
 
-<video width="800" controls>
-  <source src="docs/Demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://private-user-images.githubusercontent.com/120046505/512905487-5695ddeb-4253-4c70-b998-ed2b53f6d50c.mp4?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjI4OTE4NjgsIm5iZiI6MTc2Mjg5MTU2OCwicGF0aCI6Ii8xMjAwNDY1MDUvNTEyOTA1NDg3LTU2OTVkZGViLTQyNTMtNGM3MC1iOTk4LWVkMmI1M2Y2ZDUwYy5tcDQ_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUxMTExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MTExMVQyMDA2MDhaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0wZmFkYzBiNzc3MTBlY2Y4Yjc5NWI5ZTVmNzM4YTZiOTViMmFkZjQyMTNiMDQ5NjUzYjI5MThhNGY4OTc2ODMyJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.ahi6vyyi03qDsNuMzYpzPhLnX181eyoXWA--lO-M53A
+
+![Solution Architecture](docs/SolutionArchitecture.png)
 
 ## Architecture Components
 
