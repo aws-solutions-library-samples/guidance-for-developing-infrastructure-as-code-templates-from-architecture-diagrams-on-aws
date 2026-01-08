@@ -1,6 +1,6 @@
 requests==2.32.4
 boto3==1.40.43
-urllib3==2.5.0
+urllib3==2.6.3
 pybase64==1.4.0
 botocore==1.40.43
 openai==1.57.2
