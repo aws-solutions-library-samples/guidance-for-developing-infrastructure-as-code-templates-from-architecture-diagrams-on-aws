@@ -3,3 +3,12 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
+
+// Polyfill TextEncoder/TextDecoder for Node.js test environment
+import { TextEncoder, TextDecoder } from 'util';
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as typeof global.TextDecoder;
+
+// Polyfill ReadableStream for Node.js test environment
+import { ReadableStream } from 'stream/web';
+global.ReadableStream = ReadableStream as typeof global.ReadableStream;

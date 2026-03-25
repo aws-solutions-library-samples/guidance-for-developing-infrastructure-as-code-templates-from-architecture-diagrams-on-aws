@@ -12,21 +12,25 @@ export class StorageStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
-    //Define bucket props
-    const bucketProps = {
+    // Common security settings for all buckets
+    const securityProps = {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: false,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      versioned: true,
     };
 
     //Create S3 bucket for user uploaded images
     this.diagramStorageBucket = new s3.Bucket(this, 'StorageBucket', {
-      ...bucketProps,
+      ...securityProps,
       bucketName: `a2a-${this.account}-diagramstorage-${this.region}`,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      // CORS is required for presigned URL uploads from browser
+      // Origins will be restricted after CloudFront domain is known
       cors: [{
         allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
-        allowedOrigins: ['*'],
+        allowedOrigins: ['https://*.cloudfront.net'],
         allowedHeaders: ['*'],
         maxAge: 3000
       }]
@@ -34,9 +38,8 @@ export class StorageStack extends cdk.Stack {
 
     // Create S3 bucket for generated CDK code
     this.codeOutputBucket = new s3.Bucket(this, 'codeOutputBucket', {
+      ...securityProps,
       bucketName: `a2a-${this.account}-codeoutput-${this.region}`,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
     });
   }
 }

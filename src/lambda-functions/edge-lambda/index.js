@@ -50,12 +50,8 @@ exports.handler = async (request) => {
       };
     }
     
-    // Allow unauthenticated access to API endpoints
-    if (uri.startsWith('/api/')) {
-      console.log('API endpoint detected, allowing unauthenticated access');
-      return request.Records[0].cf.request;
-    }
-    
+    // All requests (including API endpoints) require authentication
+    // This ensures users must be logged in to access any functionality
     const secrets = await secretsManager.getSecrets();
     console.log('Secrets retrieved successfully');
     

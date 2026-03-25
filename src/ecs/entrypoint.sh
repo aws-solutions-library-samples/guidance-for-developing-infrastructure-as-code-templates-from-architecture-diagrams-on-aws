@@ -1,18 +1,18 @@
 #!/bin/sh
 
-# Create config.js file with WebSocket URL
-if [ -n "$REACT_APP_WEBSOCKET_URL" ]; then
-    echo "Creating config with WebSocket URL: $REACT_APP_WEBSOCKET_URL"
+# Create config.js file with Streaming API URL
+if [ -n "$REACT_APP_STREAMING_API_URL" ]; then
+    echo "Creating config with Streaming API URL: $REACT_APP_STREAMING_API_URL"
     cat > /usr/share/nginx/html/config.js << EOF
 window.APP_CONFIG = {
-  WEBSOCKET_URL: '$REACT_APP_WEBSOCKET_URL'
+  STREAMING_API_URL: '$REACT_APP_STREAMING_API_URL'
 };
 EOF
 else
-    echo "Warning: REACT_APP_WEBSOCKET_URL not set"
+    echo "Warning: REACT_APP_STREAMING_API_URL not set"
     cat > /usr/share/nginx/html/config.js << EOF
 window.APP_CONFIG = {
-  WEBSOCKET_URL: ''
+  STREAMING_API_URL: ''
 };
 EOF
 fi

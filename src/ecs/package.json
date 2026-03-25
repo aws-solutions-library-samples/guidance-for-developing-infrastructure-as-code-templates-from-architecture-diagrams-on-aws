@@ -47,5 +47,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.2"
   }
 }

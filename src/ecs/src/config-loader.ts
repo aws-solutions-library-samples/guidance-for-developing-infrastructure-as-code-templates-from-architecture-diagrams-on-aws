@@ -1,23 +1,27 @@
 declare global {
     interface Window {
         APP_CONFIG?: {
-            WEBSOCKET_URL?: string
             API_URL?: string
+            STREAMING_API_URL?: string
         }
     }
 }
 
-//todo: migrate away from global config
 export function initGlobalConfig() {
-    const websocketUrl = process.env.REACT_APP_WEBSOCKET_URL;
+    const streamingApiUrl = process.env.REACT_APP_STREAMING_API_URL;
     window.APP_CONFIG = window.APP_CONFIG || {};
 
-    if (websocketUrl) {
-        window.APP_CONFIG.WEBSOCKET_URL = websocketUrl;
+    if (streamingApiUrl) {
+        window.APP_CONFIG.STREAMING_API_URL = streamingApiUrl;
     }
 }
 
 export function getApiHost(){
-    console.log(process.env);
     return process.env.REACT_APP_API_HOST || window.location.origin;
+}
+
+export function getStreamingApiUrl(): string {
+    return process.env.REACT_APP_STREAMING_API_URL || 
+           window.APP_CONFIG?.STREAMING_API_URL || 
+           `${window.location.origin}/api/stream`;
 }
