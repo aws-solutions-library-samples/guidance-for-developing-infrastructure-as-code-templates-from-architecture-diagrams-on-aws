@@ -13,7 +13,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {OptionDefinition} from "@cloudscape-design/components/internal/components/option/interfaces";
 import Markdown from "react-markdown";
 import {useNotification} from "./App";
-import {triggerStepFunction, uploadImage} from "./api";
+import {triggerStepFunction, uploadImage, checkSynthesisStatus} from "./api";
 import "./MainForm.css"
 import {LoadingBar} from "@cloudscape-design/chat-components";
 import ImageDropZone, {ImageSelection} from "./ImageDropZone";
@@ -24,7 +24,6 @@ export default function () {
     const notif = useNotification();
     const [selectedImage, setSelectedImage] = useState<ImageSelection | undefined>();
     const [analysisResponse, setAnalysisResponse] = useState<string>('')
-    const [cdkModulesResponse, setCdkModulesResponse] = useState<string>('')
     const [thinkingResponse, setThinkingResponse] = useState<string>('')
     const [inProgress, setInProgress] = useState(false)
     const [language, setLanguage] = useState<OptionDefinition | null>(null)
@@ -38,9 +37,9 @@ export default function () {
     const [currentS3Key, setCurrentS3Key] = useState<string | null>(null)
     const [analysisStartTime, setAnalysisStartTime] = useState<number | null>(null)
     const [analysisComplete, setAnalysisComplete] = useState(false)
-    const [cdkModulesComplete, setCdkModulesComplete] = useState(false)
     const [codeSynthesisProgress, setCodeSynthesisProgress] = useState(0)
     const [isCodeSynthesizing, setIsCodeSynthesizing] = useState(false)
+    const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
     
     // SSE Client instance - persisted across renders
     const sseClientRef = useRef<SSEClient>(new SSEClient());
@@ -131,14 +130,14 @@ export default function () {
     }
 
     useEffect(() => {
-        if (analysisComplete && cdkModulesComplete && analysisStartTime) {
+        if (analysisComplete && analysisStartTime) {
             const duration = ((Date.now() - analysisStartTime) / 1000).toFixed(2);
-            console.log('Both complete! Showing notification');
+            console.log('Analysis complete! Showing notification');
             setInProgress(false);
             setIsScanning(false);
             notif.success(`Analysis complete in ${duration} seconds`);
         }
-    }, [analysisComplete, cdkModulesComplete, analysisStartTime]);
+    }, [analysisComplete, analysisStartTime]);
 
     // Show loading state while checking authentication
     if (isLoading) {
@@ -191,12 +190,10 @@ export default function () {
         try {
             setInProgress(true)
             setAnalysisResponse('')
-            setCdkModulesResponse('')
             setThinkingResponse('')
             setContentType('analysis')
             setAnalysisStartTime(null)
             setAnalysisComplete(false)
-            setCdkModulesComplete(false)
 
 
             const [s3Key, animationDone] = await Promise.all([
@@ -222,11 +219,7 @@ export default function () {
                         setThinkingResponse('');
                         setAnalysisResponse(prev => prev + content);
                     },
-                    onCdkModulesStream: (content: string) => {
-                        // Clear thinking when CDK modules starts
-                        setThinkingResponse('');
-                        setCdkModulesResponse(prev => prev + content);
-                    },
+                    onCdkModulesStream: () => {},
                     onOptimizationStream: (content: string) => {
                         // Not used in analyze flow, but required by interface
                         setThinkingResponse('');
@@ -236,9 +229,6 @@ export default function () {
                         if (eventType === 'analysis_complete' || eventType === '[DONE]') {
                             setAnalysisComplete(true);
                         }
-                        if (eventType === 'cdk_modules_complete') {
-                            setCdkModulesComplete(true);
-                        }
                     },
                     onError: (error: Error) => {
                         abortAll(error.message || "Error during streaming analysis");
@@ -247,9 +237,35 @@ export default function () {
             );
 
             // Trigger step function for code synthesis (runs in parallel with SSE streaming)
-            await triggerStepFunction(s3Key, language?.value!)
+            const sfResult = await triggerStepFunction(s3Key, language?.value!)
             setIsCodeSynthesizing(true);
             setCodeSynthesisProgress(0);
+            setDownloadUrl(null);
+
+            // Poll DynamoDB-backed synthesis status for real progress and download link
+            if (sfResult.executionId) {
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const status = await checkSynthesisStatus(sfResult.executionId);
+                        setCodeSynthesisProgress(status.progress || 0);
+                        
+                        if (status.status === 'SUCCEEDED') {
+                            clearInterval(pollInterval);
+                            setIsCodeSynthesizing(false);
+                            if (status.downloadUrl) {
+                                setDownloadUrl(status.downloadUrl);
+                                notif.success('Code synthesis complete! Download is ready.');
+                            }
+                        } else if (status.status === 'FAILED') {
+                            clearInterval(pollInterval);
+                            setIsCodeSynthesizing(false);
+                            notif.error(`Code synthesis failed: ${status.error || 'Unknown error'}`);
+                        }
+                    } catch (e) {
+                        console.error('Error polling synthesis status:', e);
+                    }
+                }, 5000);
+            }
         } catch (e) {
             abortAll("Error analyzing architecture", e);
         }
@@ -286,15 +302,10 @@ export default function () {
                         setThinkingResponse('');
                         setAnalysisResponse(prev => prev + content);
                     },
-                    onCdkModulesStream: (content: string) => {
-                        // Not used in optimize flow, but required by interface
-                        setThinkingResponse('');
-                        setCdkModulesResponse(prev => prev + content);
-                    },
+                    onCdkModulesStream: () => {},
                     onOptimizationStream: (content: string) => {
                         // Clear thinking when optimization content starts
                         setThinkingResponse('');
-                        // Optimization uses analysisResponse for display
                         setAnalysisResponse(prev => prev + content);
                     },
                     onComplete: (eventType: string) => {
@@ -341,15 +352,15 @@ export default function () {
                         <FormField>
                             <SpaceBetween direction="horizontal" size="s">
                                 <Button variant={"primary"}
-                                        disabled={!selectedImage || !language || isScanning || !isStreamingReady}
+                                        disabled={!selectedImage || !language || isScanning || isCodeSynthesizing || !isStreamingReady}
                                         disabledReason={!isStreamingReady ? "Streaming API not configured" : "Please select image and language"}
                                         onClick={x => onSubmit()}
-                                        loading={inProgress}
+                                        loading={inProgress || isCodeSynthesizing}
                                         loadingText={isScanning ? "Scanning..." : "Generating"}>
-                                    {isScanning ? "Scanning..." : inProgress ? "Generating..." : "Generate"}
+                                    {isScanning ? "Scanning..." : (inProgress || isCodeSynthesizing) ? "Generating..." : "Generate"}
                                 </Button>
                                 <Button variant={"primary"}
-                                        disabled={!selectedImage || isScanning || inProgress || !isStreamingReady}
+                                        disabled={!selectedImage || isScanning || inProgress || isCodeSynthesizing || !isStreamingReady}
                                         disabledReason={!isStreamingReady ? "Streaming API not configured" : "Please select image"}
                                         onClick={x => onOptimize()}
                                         loading={optimizeInProgress}
@@ -358,38 +369,17 @@ export default function () {
                                 </Button>
                             </SpaceBetween>
                         </FormField>
-                        <FormField>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px',
-                                backgroundColor: isStreamingReady ? '#f0f9ff' : '#fef2f2',
-                                borderRadius: '4px',
-                                border: `1px solid ${isStreamingReady ? '#0ea5e9' : '#ef4444'}`
-                            }}>
-                                <div style={{
-                                    width: '8px',
-                                    height: '8px',
-                                    borderRadius: '50%',
-                                    backgroundColor: isStreamingReady ? '#22c55e' : '#ef4444'
-                                }}/>
-                                <span style={{fontSize: '14px', fontWeight: '500'}}>
-                                    Streaming: {isStreamingReady ? 'Ready' : 'Not Configured'}
-                                </span>
-                            </div>
-                        </FormField>
                     </SpaceBetween>
                 </Container>
                 <Container>
-                    {cdkModulesResponse && (
-                        <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '18px'}}>CDK Modules
-                            Breakdown</div>
+                    {!downloadUrl && <div>Packaged code will be available to download here after synthesis</div>}
+                    {downloadUrl && (
+                        <div style={{marginTop: '16px', padding: '12px', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #0ea5e9'}}>
+                            <Button variant="primary" href={downloadUrl} target="_blank" iconName="download">
+                                Download Generated Code
+                            </Button>
+                        </div>
                     )}
-                    {!cdkModulesResponse && <div>CDK modules breakdown will appear here after processing</div>}
-                    <Markdown>
-                        {cdkModulesResponse}
-                    </Markdown>
                 </Container>
             </SpaceBetween>
             <Container>
@@ -408,13 +398,6 @@ export default function () {
                             <Markdown>{thinkingResponse}</Markdown>
                         </div>
                     </div>
-                )}
-                {contentType === 'analysis' && analysisResponse && (
-                    <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '18px'}}>Architecture Summary</div>
-                )}
-                {contentType === 'optimization' && analysisResponse && (
-                    <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '18px'}}>Recommended
-                        Optimizations</div>
                 )}
                 {!analysisResponse && !thinkingResponse &&
                     <div>

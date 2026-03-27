@@ -20,6 +20,7 @@ interface Props extends cdk.StackProps {
   diagramStorageBucket: s3.Bucket;
   streamingLambda?: lambda.IFunction;
   streamingFunctionUrl?: lambda.FunctionUrl;
+  synthesisProgressTable: cdk.aws_dynamodb.Table;
 }
 
 export class FrontEndStack extends cdk.Stack {
@@ -73,6 +74,25 @@ export class FrontEndStack extends cdk.Stack {
       ],
     });
     // ALB permission will be added after target group is created
+
+    // ===== Lambda for synthesis status polling =====
+    const synthesisStatusLambda = new lambda.Function(this, 'synthesisStatusHandler', {
+      functionName: `a2a-synthesis-status`,
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('src/lambda-functions/synthesis-status'),
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        REGION: this.region,
+        SYNTHESIS_PROGRESS_TABLE: props.synthesisProgressTable.tableName,
+      },
+      initialPolicy: [
+        new iam.PolicyStatement({
+          actions: ['dynamodb:GetItem'],
+          resources: [props.synthesisProgressTable.tableArn],
+        }),
+      ],
+    });
 
     // ===== ECS: Docker Asset, Cluster, ALB =====
     const asset = new ecr_assets.DockerImageAsset(this, `DockerAsset`, {
@@ -165,6 +185,17 @@ export class FrontEndStack extends cdk.Stack {
     ];
     // Note: LambdaTarget automatically grants invoke permission
 
+    // ===== Synthesis Status Target Group =====
+    const synthesisStatusTargetGroup = new elbv2.ApplicationTargetGroup(this, 'SynthesisStatusTargetGroup', {
+      targetType: elbv2.TargetType.LAMBDA,
+      vpc: this.cluster.vpc,
+      targets: [new targets.LambdaTarget(synthesisStatusLambda)]
+    });
+    const cfnSynthesisStatusTargetGroup = synthesisStatusTargetGroup.node.defaultChild as elbv2.CfnTargetGroup;
+    cfnSynthesisStatusTargetGroup.targetGroupAttributes = [
+      { key: 'lambda.multi_value_headers.enabled', value: 'true' }
+    ];
+
     // ===== Streaming Lambda Target Group =====
     // Create target group for streaming Lambda if provided
     let streamingTargetGroup: elbv2.ApplicationTargetGroup | undefined;
@@ -203,6 +234,11 @@ export class FrontEndStack extends cdk.Stack {
       action: elbv2.ListenerAction.forward([stepFunctionTargetGroup]),
       conditions: [elbv2.ListenerCondition.pathPatterns(['/api/step-function']), elbv2.ListenerCondition.httpRequestMethods(['POST', 'OPTIONS'])],
       priority: 3
+    });
+    this.service.listener.addAction('SynthesisStatusRoute', {
+      action: elbv2.ListenerAction.forward([synthesisStatusTargetGroup]),
+      conditions: [elbv2.ListenerCondition.pathPatterns(['/api/synthesis-status']), elbv2.ListenerCondition.httpRequestMethods(['POST', 'OPTIONS'])],
+      priority: 4
     });
 
     // Add streaming endpoint routes if streaming Lambda is configured
@@ -254,28 +290,16 @@ export class FrontEndStack extends cdk.Stack {
 
     // ===== Lambda Function URL Origin for streaming =====
     // Create origin for Lambda Function URL with OAC (Origin Access Control)
-    // This allows CloudFront to sign requests to the IAM-authenticated Lambda URL
+    // Uses CDK's built-in FunctionUrlOrigin.withOriginAccessControl for proper OAC setup
     let streamingLambdaOrigin: cloudfront.IOrigin | undefined;
-    let lambdaOac: cloudfront.CfnOriginAccessControl | undefined;
     if (props.streamingFunctionUrl && props.streamingLambda) {
-      // Extract domain from Function URL using CloudFormation intrinsic functions
-      // URL format: https://xxxxx.lambda-url.region.on.aws/
-      const functionUrlDomain = cdk.Fn.select(2, cdk.Fn.split('/', props.streamingFunctionUrl.url));
-      
-      // Create Origin Access Control for Lambda
-      lambdaOac = new cloudfront.CfnOriginAccessControl(this, 'StreamingLambdaOAC', {
-        originAccessControlConfig: {
-          name: 'a2a-streaming-lambda-oac',
-          originAccessControlOriginType: 'lambda',
-          signingBehavior: 'always',
-          signingProtocol: 'sigv4',
-        },
-      });
-
-      streamingLambdaOrigin = new origins.HttpOrigin(functionUrlDomain, {
-        originId: 'streaming-lambda-origin',
-        protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+      streamingLambdaOrigin = origins.FunctionUrlOrigin.withOriginAccessControl(props.streamingFunctionUrl, {
+        originAccessControl: new cloudfront.FunctionUrlOriginAccessControl(this, 'StreamingLambdaOAC', {
+          originAccessControlName: 'a2a-streaming-lambda-oac-v2',
+          signing: cloudfront.Signing.SIGV4_ALWAYS,
+        }),
         readTimeout: cdk.Duration.seconds(60),
+        originId: 'streaming-lambda-origin',
       });
     }
     // ===== CloudFront Distribution pointing to ALB, auth via Edge Lambda =====
@@ -313,13 +337,15 @@ export class FrontEndStack extends cdk.Stack {
         compress: false,
       },
       additionalBehaviors: {
-        // Streaming endpoints behavior - uses Lambda Function URL with origin verification
+        // Streaming endpoints behavior - uses Lambda Function URL with OAC
         '/api/stream/*': {
           origin: streamingLambdaOrigin || streamingAlbOrigin,
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+          // Must NOT forward Host header - OAC signs with the origin's host
+          // ALL_VIEWER_EXCEPT_HOST_HEADER forwards all viewer headers except Host
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
           functionAssociations: [{
             function: corsFunction,
@@ -360,20 +386,6 @@ export class FrontEndStack extends cdk.Stack {
       comment: `a2a-frontend-cloudfront`,
       enableLogging: false,
     });
-
-    // ===== Configure OAC for Lambda Function URL =====
-    // This allows CloudFront to sign requests to the IAM-authenticated Lambda URL
-    if (lambdaOac) {
-      // Get the underlying CloudFormation resource to add OAC
-      const cfnDistribution = this.cloudFrontDistribution.node.defaultChild as cloudfront.CfnDistribution;
-      
-      // Add OAC to the Lambda origin (streaming-lambda-origin)
-      // Origins order: 0=default ALB, 1=streaming-lambda-origin, 2=api ALB
-      cfnDistribution.addPropertyOverride(
-        'DistributionConfig.Origins.1.OriginAccessControlId',
-        lambdaOac.attrId
-      );
-    }
 
     // ===== Cognito (User Pool, Client, Domain) =====
     this.userPool = new cognito.UserPool(this, "UserPool", {

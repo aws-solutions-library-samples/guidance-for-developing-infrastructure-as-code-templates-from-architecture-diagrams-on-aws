@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
 interface Props extends cdk.StackProps {
@@ -8,6 +9,7 @@ interface Props extends cdk.StackProps {
 export class StorageStack extends cdk.Stack {
   public readonly diagramStorageBucket: s3.Bucket;
   public readonly codeOutputBucket: s3.Bucket;
+  public readonly synthesisProgressTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
@@ -40,6 +42,15 @@ export class StorageStack extends cdk.Stack {
     this.codeOutputBucket = new s3.Bucket(this, 'codeOutputBucket', {
       ...securityProps,
       bucketName: `a2a-${this.account}-codeoutput-${this.region}`,
+    });
+
+    // DynamoDB table for tracking code synthesis progress
+    this.synthesisProgressTable = new dynamodb.Table(this, 'SynthesisProgressTable', {
+      tableName: 'a2a-synthesis-progress',
+      partitionKey: { name: 'executionId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      timeToLiveAttribute: 'ttl',
     });
   }
 }

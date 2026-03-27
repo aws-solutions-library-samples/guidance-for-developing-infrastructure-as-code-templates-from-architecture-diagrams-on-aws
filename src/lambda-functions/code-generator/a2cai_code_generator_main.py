@@ -43,9 +43,11 @@ async def async_lambda_handler(event, context):
     # Extract S3 URI and code language from the event data
     image_s3_uri = event['file_path']
     code_language = event['code_language']
-    connection_id = event.get('connection_id')  # Optional connection ID for targeted WebSocket messages
+    execution_id = event.get('execution_id', '')
     
-    print(f"Code generator received connection_id: {connection_id}")
+    # Set execution ID for progress tracking via DynamoDB
+    os.environ['_EXECUTION_ID'] = execution_id
+    print(f"Code generator execution_id: {execution_id}")
     print(f"Full event: {event}")
 
     # Modified section of async_lambda_handler to use secrets
@@ -71,7 +73,7 @@ async def async_lambda_handler(event, context):
 
     # Call main processing function with all configured parameters
     # Returns path to generated zip file containing the code
-    zipfilepath = await a2c_ai_do_it_all(image_s3_uri, storage_dir, code_language, prompt_config_dict, stack_generation_prompt_dict,api_key,model_name, connection_id)
+    zipfilepath = await a2c_ai_do_it_all(image_s3_uri, storage_dir, code_language, prompt_config_dict, stack_generation_prompt_dict,api_key,model_name)
 
     # Upload the generated zip file to S3
     final_s3_path, s3_object_key = copy_file_to_s3(zipfilepath, result_bucket_name)
@@ -79,8 +81,8 @@ async def async_lambda_handler(event, context):
     # Generate a presigned URL for the uploaded file
     presigned_url = generate_presigned_url(result_bucket_name, s3_object_key, expiration=86400)
 
-    # Send WebSocket notification to connected client(s)
-    await send_websocket_notification(presigned_url, connection_id)
+    # Write download URL to DynamoDB for frontend polling
+    await send_download_notification(presigned_url)
 
     # Return a dictionary with a downloadable link to the generated code and a success message
     return {

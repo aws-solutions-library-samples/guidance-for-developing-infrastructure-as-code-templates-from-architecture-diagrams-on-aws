@@ -12,6 +12,22 @@ import re
 
 bedrock_runtime = boto3.client('bedrock-runtime')
 
+
+def extract_json_from_response(text):
+    """Extract JSON from model response, stripping markdown code fences if present."""
+    # Try direct parse first
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    # Strip markdown code fences (```json ... ``` or ``` ... ```)
+    pattern = r'```(?:json)?\s*\n?(.*?)\n?\s*```'
+    match = re.search(pattern, text, re.DOTALL)
+    if match:
+        return json.loads(match.group(1).strip())
+    raise json.JSONDecodeError("Could not extract JSON from model response", text, 0)
+
 def download_file_from_s3(s3_uri, local_dir):
     
     """
@@ -125,7 +141,7 @@ def generate_architecture_description(prompt, encoded_image):
         ],
     }
 
-    modelId = 'anthropic.claude-3-5-sonnet-20240620-v1:0'
+    modelId = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
     accept = 'application/json'
     contentType = 'application/json'
 
@@ -169,7 +185,7 @@ def generate_module_descriptions(architecture_description_dict , modules_descrip
         ],
     }
 
-    modelId = 'anthropic.claude-3-5-sonnet-20240620-v1:0'
+    modelId = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
     accept = 'application/json'
     contentType = 'application/json'
 
@@ -213,7 +229,7 @@ def generate_deployment_sequence(modules_description , deployment_sequence_promp
         ],
     }
 
-    modelId = 'anthropic.claude-3-5-sonnet-20240620-v1:0'
+    modelId = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
     accept = 'application/json'
     contentType = 'application/json'
 
@@ -238,7 +254,7 @@ def generate_module_prompts(deployment_sequence_dict, language_name):
     
     modules_description =deployment_sequence_dict['modules_description']
     print("Modules Description", modules_description)
-    modules_description_dict=json.loads(modules_description)
+    modules_description_dict=extract_json_from_response(modules_description)
     
     # Create empty dictionary to store prompts
     module_prompt_dict = {}    
@@ -346,7 +362,7 @@ async def generate_staging_file (staging_prompt_dict, code_language, local_dir, 
             
     return codefilepath
     
-async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, stack_generation_prompt_dict, api_key, model_name, connection_id=None):
+async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, stack_generation_prompt_dict, api_key, model_name):
     from utils2_v2 import send_progress_update
     
     stack_dirname , stack_logfiles_dir =get_stack_name()
@@ -359,46 +375,46 @@ async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, 
     deployment_sequence_prompt=prompt_config_dict['deployment_sequence_prompt']  
 
     # Step 1: Download Architecture drawing from s3
-    await send_progress_update(10, connection_id)
+    await send_progress_update(10)
     image_path = download_file_from_s3(s3_uri, local_dir)
     
     # Step 2: Get encoded image
-    await send_progress_update(20, connection_id)
+    await send_progress_update(20)
     encoded_image= get_image_data(image_path)
     
     # Step 3: Get Architecture Description
-    await send_progress_update(30, connection_id)
+    await send_progress_update(30)
     arch_description_dict=generate_architecture_description(arch_prompt, encoded_image)
     
     # Step 4: Render JSON with Modular descriptions
-    await send_progress_update(40, connection_id)
+    await send_progress_update(40)
     module_descriptions=generate_module_descriptions(arch_description_dict , modules_description_prompt)
 
     # Step 5: Render JSON with Deployment Sequence
-    await send_progress_update(50, connection_id)
+    await send_progress_update(50)
     module_descriptions=generate_deployment_sequence(module_descriptions, deployment_sequence_prompt)
     
     # Step 6: Generate Module prompts
-    await send_progress_update(60, connection_id)
+    await send_progress_update(60)
     module_prompt_dict,modules_list = generate_module_prompts(module_descriptions, code_language)
     
     # Step 7: Generate module level stacks asynchronously
-    await send_progress_update(70, connection_id)
+    await send_progress_update(70)
     responses=await(modular_stack_generator_main(module_prompt_dict, code_language, local_dir, stack_dirname, stack_logfiles_dir,stack_generation_prompt_dict, api_key, model_name))
     print("responses from async" , responses)
     
     # Step 8: Generate Staging Prompt
-    await send_progress_update(80, connection_id)
+    await send_progress_update(80)
     staging_prompt_dict=generate_staging_prompt(responses, staging_prompt_template, modules_list, code_language)
     print(type(staging_prompt_dict))
     print("STAGING PROMPT DICT" , staging_prompt_dict)
     
     # Step 9: Generate Staging File
-    await send_progress_update(90, connection_id)
+    await send_progress_update(90)
     codefilepath= await (generate_staging_file (staging_prompt_dict, code_language,  local_dir, stack_logfiles_dir,stack_dirname, api_key, model_name))
     
     # Step 10: zip the directory
-    await send_progress_update(100, connection_id)
+    await send_progress_update(100)
     zipfilepath = zip_directory(stack_dirname)
     
     return zipfilepath

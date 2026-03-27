@@ -129,13 +129,24 @@ export class SSEClient {
     this.receivedDone = false;
 
     try {
+      const bodyStr = JSON.stringify(body);
+
+      // Compute SHA256 hash of the body for Lambda Function URL OAC
+      // Lambda Function URLs require x-amz-content-sha256 for POST requests
+      const encoder = new TextEncoder();
+      const data = encoder.encode(bodyStr);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'text/event-stream',
+          'x-amz-content-sha256': hashHex,
         },
-        body: JSON.stringify(body),
+        body: bodyStr,
         signal: this.abortController.signal,
       });
 

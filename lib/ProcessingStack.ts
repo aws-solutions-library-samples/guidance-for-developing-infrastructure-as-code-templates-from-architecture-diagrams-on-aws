@@ -9,6 +9,7 @@ import { Construct } from 'constructs';
 interface Props extends cdk.StackProps {
   diagramStorageBucket: cdk.aws_s3.Bucket;
   codeOutputBucket: cdk.aws_s3.Bucket;
+  synthesisProgressTable: cdk.aws_dynamodb.Table;
 }
 
 export class ProcessingStack extends cdk.Stack {
@@ -60,13 +61,12 @@ export class ProcessingStack extends cdk.Stack {
       invokeMode: lambda.InvokeMode.RESPONSE_STREAM,
     });
 
-    // Grant CloudFront permission to invoke the Lambda function URL
-    // Using wildcard for distribution to avoid circular dependency with FrontEndStack
-    this.streamingLambda.addPermission('AllowCloudFrontInvoke', {
+    // CloudFront OAC requires both InvokeFunctionUrl (added by CDK FunctionUrlOrigin)
+    // and InvokeFunction permissions. Adding InvokeFunction here to avoid circular dependency.
+    this.streamingLambda.addPermission('AllowCloudFrontInvokeFunction', {
       principal: new iam.ServicePrincipal('cloudfront.amazonaws.com'),
-      action: 'lambda:InvokeFunctionUrl',
+      action: 'lambda:InvokeFunction',
       sourceArn: `arn:aws:cloudfront::${this.account}:distribution/*`,
-      functionUrlAuthType: lambda.FunctionUrlAuthType.AWS_IAM,
     });
 
     const processingLambda = new lambda.DockerImageFunction(this, 'codeGenerator', {
@@ -76,6 +76,7 @@ export class ProcessingStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(15),
       environment: {
         RESULTS_BUCKET_NAME: props.codeOutputBucket.bucketName,
+        SYNTHESIS_PROGRESS_TABLE: props.synthesisProgressTable.tableName,
         REGION: this.region,
         A2CAI_PROMPTS: 'a2cai_prompts.yaml',
         MODEL_NAME: 'model_name.yaml',
@@ -106,6 +107,10 @@ export class ProcessingStack extends cdk.Stack {
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
           resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:A2A_API_KEY*`],
+        }),
+        new iam.PolicyStatement({
+          actions: ['dynamodb:PutItem', 'dynamodb:UpdateItem'],
+          resources: [props.synthesisProgressTable.tableArn],
         }),
       ],
     });

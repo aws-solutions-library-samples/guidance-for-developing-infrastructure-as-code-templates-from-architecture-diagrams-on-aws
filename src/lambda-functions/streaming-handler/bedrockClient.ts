@@ -80,7 +80,7 @@ export class BedrockStreamingClient {
 
   constructor(config?: Partial<BedrockStreamConfig>) {
     const region = config?.region || process.env.REGION || process.env.AWS_REGION || 'us-west-2';
-    this.modelId = config?.modelId || process.env.BEDROCK_MODEL_ID || 'anthropic.claude-sonnet-4-5-20250514-v1:0';
+    this.modelId = config?.modelId || process.env.BEDROCK_MODEL_ID || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 
     this.bedrockClient = new BedrockRuntimeClient({ region });
     this.s3Client = new S3Client({ region });
@@ -279,14 +279,15 @@ When analyzing a diagram, you should:
 2. Describe the data flow and connections between services
 3. Explain the purpose of each component
 4. Identify any patterns or best practices being used
-5. Note any potential issues or areas for improvement
+5. Do NOT provide any recommendations or optimizations - just analyze what's there.
 
-Provide your analysis in a clear, structured format with sections for:
+Provide your analysis in a clear, concise, structured format with sections for:
 - Overview
 - Services Identified
 - Data Flow
 - Architecture Patterns
-- Observations`;
+
+Do not ask any follow-up questions.`;
   }
 
   /**
@@ -302,7 +303,9 @@ When reviewing a diagram, focus on:
 4. Reliability - Suggest ways to improve fault tolerance and availability
 5. Operational Excellence - Recommend monitoring and automation improvements
 
-Provide your recommendations in a clear, structured format with specific, actionable suggestions for each area.`;
+Provide your recommendations in a clear, concise, structured format with specific, actionable suggestions for each area.
+Provide reference links to related offical AWS documentation at the end of the response.
+Do not ask any follow-up questions.`;
   }
 }
 
