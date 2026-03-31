@@ -460,6 +460,40 @@ export class FrontEndStack extends cdk.Stack {
     this.service.taskDefinition.defaultContainer?.addEnvironment('AWS_ACCOUNT_ID', this.account);
     this.service.taskDefinition.defaultContainer?.addEnvironment('AWS_REGION', this.region);
 
+    // Set ALLOWED_ORIGIN for CORS on all Lambdas (restricts Access-Control-Allow-Origin)
+    const allowedOrigin = `https://${this.cloudFrontDistribution.distributionDomainName}`;
+    this.responderLambda.addEnvironment('ALLOWED_ORIGIN', allowedOrigin);
+    stepFunctionInvoker.addEnvironment('ALLOWED_ORIGIN', allowedOrigin);
+    synthesisStatusLambda.addEnvironment('ALLOWED_ORIGIN', allowedOrigin);
+
+    // Update the streaming Lambda's ALLOWED_ORIGIN env var using a custom resource
+    // This avoids a circular dependency between ProcessingStack and FrontEndStack
+    if (props.streamingLambda) {
+      new cdk.custom_resources.AwsCustomResource(this, 'UpdateStreamingLambdaOrigin', {
+        onUpdate: {
+          service: 'Lambda',
+          action: 'updateFunctionConfiguration',
+          parameters: {
+            FunctionName: props.streamingLambda.functionName,
+            Environment: {
+              Variables: {
+                DIAGRAM_BUCKET: props.diagramStorageBucket.bucketName,
+                REGION: this.region,
+                ALLOWED_ORIGIN: allowedOrigin,
+              },
+            },
+          },
+          physicalResourceId: cdk.custom_resources.PhysicalResourceId.of('streaming-lambda-origin-update'),
+        },
+        policy: cdk.custom_resources.AwsCustomResourcePolicy.fromStatements([
+          new iam.PolicyStatement({
+            actions: ['lambda:UpdateFunctionConfiguration'],
+            resources: [props.streamingLambda.functionArn],
+          }),
+        ]),
+      });
+    }
+
     // ===== Output URLs and UserPool IDs =====
     new cdk.CfnOutput(this, 'CloudFrontUrl', {
       value: `https://${this.cloudFrontDistribution.distributionDomainName}`,

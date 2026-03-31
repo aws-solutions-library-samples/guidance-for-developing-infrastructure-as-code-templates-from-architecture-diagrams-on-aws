@@ -6,7 +6,7 @@ dynamodb = boto3.resource('dynamodb', region_name=os.environ.get('REGION', 'us-w
 
 CORS_HEADERS = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', ''),
     'Access-Control-Allow-Methods': 'OPTIONS,POST',
     'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
 }

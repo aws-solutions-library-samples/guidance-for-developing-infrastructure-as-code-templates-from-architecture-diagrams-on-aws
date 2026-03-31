@@ -23,7 +23,7 @@ def handler(event, context):
         return {
             'statusCode': 200,
             'headers': {
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', ''),
                 'Access-Control-Allow-Methods': 'OPTIONS,POST',
                 'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
                 'Access-Control-Max-Age': '86400'
@@ -43,7 +43,7 @@ def handler(event, context):
                 'statusCode': 400,
                 'headers': {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '')
                 },
                 'body': json.dumps({'error': 'key and contentType are required'}),
                 'isBase64Encoded': False
@@ -68,7 +68,7 @@ def handler(event, context):
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', ''),
                 'Access-Control-Allow-Methods': 'OPTIONS,POST',
                 'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'
             },
@@ -83,7 +83,7 @@ def handler(event, context):
             'statusCode': 500,
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '')
             },
             'body': json.dumps({'error': str(e)}),
             'isBase64Encoded': False

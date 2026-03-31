@@ -30,14 +30,19 @@ export interface StreamingRequest {
 /**
  * SSE response headers for streaming
  */
-const SSE_HEADERS: Record<string, string> = {
-  'Content-Type': 'text/event-stream',
-  'Cache-Control': 'no-cache',
-  'Connection': 'keep-alive',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+/**
+ * SSE response headers for streaming
+ */
+function getSSEHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || '',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+}
 
 /**
  * Validates the streaming request body
@@ -143,7 +148,7 @@ export const handler = awslambda.streamifyResponse(
     // Set up response metadata with SSE headers
     const metadata: Record<string, unknown> = {
       statusCode: 200,
-      headers: SSE_HEADERS,
+      headers: getSSEHeaders(),
     };
 
     // Create the HTTP response stream with metadata
