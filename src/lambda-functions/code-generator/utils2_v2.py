@@ -287,129 +287,71 @@ def load_api_key(file_path):
         print(f"An unexpected error occurred: {e}")
 
 
-async def send_progress_update(progress, connection_id=None):
+async def send_progress_update(progress):
     """
-    Send progress update to specific connection or all connected WebSocket clients
+    Write progress update to DynamoDB synthesis progress table.
     """
-    print(f"send_progress_update called with connection_id: {connection_id}")
-    
     try:
-        websocket_api_id = os.environ['WEBSOCKET_API_ID']
-        connections_table = os.environ['CONNECTIONS_TABLE']
-        region = os.environ['REGION']
+        table_name = os.environ.get('SYNTHESIS_PROGRESS_TABLE')
+        execution_id = os.environ.get('_EXECUTION_ID', 'unknown')
+        if not table_name:
+            print(f"Code synthesis progress: {progress}% (no table configured)")
+            return
         
-        dynamodb = boto3.resource('dynamodb', region_name=region)
-        table = dynamodb.Table(connections_table)
+        import time
+        dynamodb = boto3.resource('dynamodb', region_name=os.environ.get('REGION', 'us-west-2'))
+        table = dynamodb.Table(table_name)
         
-        apigateway_client = boto3.client('apigatewaymanagementapi',
-                                       endpoint_url=f'https://{websocket_api_id}.execute-api.{region}.amazonaws.com/prod')
-        
-        message = {
-            'type': 'synthesis_progress',
-            'progress': progress
+        update_expr = 'SET progress = :p, #s = :s, updatedAt = :u, #t = :ttl'
+        expr_values = {
+            ':p': progress,
+            ':s': 'RUNNING' if progress < 100 else 'SUCCEEDED',
+            ':u': int(time.time()),
+            ':ttl': int(time.time()) + 86400,  # 24 hour TTL
         }
+        expr_names = {'#s': 'status', '#t': 'ttl'}
         
-        if connection_id:
-            # Send to specific connection
-            try:
-                apigateway_client.post_to_connection(
-                    ConnectionId=connection_id,
-                    Data=json.dumps(message)
-                )
-                print(f"Progress sent to specific connection: {connection_id}")
-            except Exception as e:
-                print(f"Failed to send progress to connection {connection_id}: {e}")
-                # Remove stale connection
-                try:
-                    table.delete_item(Key={'connectionId': connection_id})
-                except Exception:
-                    pass
-        else:
-            # Send to all connections (fallback behavior)
-            response = table.scan()
-            connections = response.get('Items', [])
-            
-            for connection in connections:
-                conn_id = connection['connectionId']
-                try:
-                    apigateway_client.post_to_connection(
-                        ConnectionId=conn_id,
-                        Data=json.dumps(message)
-                    )
-                except Exception as e:
-                    print(f"Failed to send progress to connection {conn_id}: {e}")
-                    try:
-                        table.delete_item(Key={'connectionId': conn_id})
-                    except Exception:
-                        pass
+        table.update_item(
+            Key={'executionId': execution_id},
+            UpdateExpression=update_expr,
+            ExpressionAttributeValues=expr_values,
+            ExpressionAttributeNames=expr_names,
+        )
+        print(f"Progress updated: {progress}% for execution {execution_id}")
     except Exception as e:
-        print(f"Error sending progress update: {e}")
+        print(f"Error writing progress to DynamoDB: {e}")
 
 
-async def send_websocket_notification(presigned_url, connection_id=None):
+async def send_download_notification(presigned_url):
     """
-    Send WebSocket notification to specific connection or all connected clients with the presigned URL
+    Write the download URL to DynamoDB synthesis progress table.
     """
-    print(f"send_websocket_notification called with connection_id: {connection_id}")
-    
     try:
-        # Get environment variables
-        websocket_api_id = os.environ['WEBSOCKET_API_ID']
-        connections_table = os.environ['CONNECTIONS_TABLE']
-        region = os.environ['REGION']
+        table_name = os.environ.get('SYNTHESIS_PROGRESS_TABLE')
+        execution_id = os.environ.get('_EXECUTION_ID', 'unknown')
+        if not table_name:
+            print(f"Code synthesis complete. Download URL: {presigned_url}")
+            return
         
-        # Initialize clients
-        dynamodb = boto3.resource('dynamodb', region_name=region)
-        table = dynamodb.Table(connections_table)
+        import time
+        dynamodb = boto3.resource('dynamodb', region_name=os.environ.get('REGION', 'us-west-2'))
+        table = dynamodb.Table(table_name)
         
-        apigateway_client = boto3.client('apigatewaymanagementapi',
-                                       endpoint_url=f'https://{websocket_api_id}.execute-api.{region}.amazonaws.com/prod')
-        
-        # Prepare message
-        message = {
-            'type': 'code_ready',
-            'message': 'Your code is ready!',
-            'downloadUrl': presigned_url,
-            'downloadText': 'Click here to download'
-        }
-        
-        if connection_id:
-            # Send to specific connection
-            try:
-                apigateway_client.post_to_connection(
-                    ConnectionId=connection_id,
-                    Data=json.dumps(message)
-                )
-                print(f"Message sent to specific connection: {connection_id}")
-            except Exception as e:
-                print(f"Failed to send message to connection {connection_id}: {e}")
-                # Remove stale connection
-                try:
-                    table.delete_item(Key={'connectionId': connection_id})
-                except Exception:
-                    pass
-        else:
-            # Send to all connections (fallback behavior)
-            response = table.scan()
-            connections = response.get('Items', [])
-            
-            for connection in connections:
-                conn_id = connection['connectionId']
-                try:
-                    apigateway_client.post_to_connection(
-                        ConnectionId=conn_id,
-                        Data=json.dumps(message)
-                    )
-                except Exception as e:
-                    print(f"Failed to send message to connection {conn_id}: {e}")
-                    # Remove stale connection
-                    try:
-                        table.delete_item(Key={'connectionId': conn_id})
-                    except Exception:
-                        pass
-                    
+        table.update_item(
+            Key={'executionId': execution_id},
+            UpdateExpression='SET progress = :p, #s = :s, downloadUrl = :d, updatedAt = :u, #t = :ttl',
+            ExpressionAttributeValues={
+                ':p': 100,
+                ':s': 'SUCCEEDED',
+                ':d': presigned_url,
+                ':u': int(time.time()),
+                ':ttl': int(time.time()) + 86400,
+            },
+            ExpressionAttributeNames={'#s': 'status', '#t': 'ttl'},
+        )
+        print(f"Download URL written for execution {execution_id}")
     except Exception as e:
-        print(f"Error sending WebSocket notification: {e}")
+        print(f"Error writing download URL to DynamoDB: {e}")
 
 
 

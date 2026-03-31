@@ -17,12 +17,15 @@ const processingStack = new ProcessingStack(app, `${AppConfig.applicationName}-P
   env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
   diagramStorageBucket: storageStack.diagramStorageBucket,
   codeOutputBucket: storageStack.codeOutputBucket,
+  synthesisProgressTable: storageStack.synthesisProgressTable,
 });
 
 const frontEndStack = new FrontEndStack(app, `${AppConfig.applicationName}-FrontEndStack`, {
   env: { account: AppConfig.deploymentAccount, region: AppConfig.region },
   diagramStorageBucket: storageStack.diagramStorageBucket,
-  webSocketUrl: `wss://${processingStack.webSocketApi.apiId}.execute-api.${AppConfig.region}.amazonaws.com/prod`,
+  streamingLambda: processingStack.streamingLambda,
+  streamingFunctionUrl: processingStack.streamingFunctionUrl,
+  synthesisProgressTable: storageStack.synthesisProgressTable,
 });
 
 // Add CDK Nag checks

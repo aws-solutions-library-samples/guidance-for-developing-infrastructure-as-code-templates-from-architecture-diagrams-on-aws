@@ -9,21 +9,21 @@ import {
     Select,
     SpaceBetween
 } from "@cloudscape-design/components";
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {OptionDefinition} from "@cloudscape-design/components/internal/components/option/interfaces";
 import Markdown from "react-markdown";
 import {useNotification} from "./App";
-import {triggerStepFunction, uploadImage} from "./api";
+import {triggerStepFunction, uploadImage, checkSynthesisStatus} from "./api";
 import "./MainForm.css"
 import {LoadingBar} from "@cloudscape-design/chat-components";
 import ImageDropZone, {ImageSelection} from "./ImageDropZone";
+import {SSEClient} from "./sseClient";
 
 
 export default function () {
     const notif = useNotification();
     const [selectedImage, setSelectedImage] = useState<ImageSelection | undefined>();
     const [analysisResponse, setAnalysisResponse] = useState<string>('')
-    const [cdkModulesResponse, setCdkModulesResponse] = useState<string>('')
     const [thinkingResponse, setThinkingResponse] = useState<string>('')
     const [inProgress, setInProgress] = useState(false)
     const [language, setLanguage] = useState<OptionDefinition | null>(null)
@@ -34,15 +34,19 @@ export default function () {
     const [scanPhase, setScanPhase] = useState<'vertical' | 'horizontal'>('vertical')
     const [optimizeInProgress, setOptimizeInProgress] = useState(false)
     const [contentType, setContentType] = useState<'analysis' | 'optimization' | null>(null)
-    const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
-    const [connectionId, setConnectionId] = useState<string | null>(null)
-    const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
     const [currentS3Key, setCurrentS3Key] = useState<string | null>(null)
     const [analysisStartTime, setAnalysisStartTime] = useState<number | null>(null)
     const [analysisComplete, setAnalysisComplete] = useState(false)
-    const [cdkModulesComplete, setCdkModulesComplete] = useState(false)
     const [codeSynthesisProgress, setCodeSynthesisProgress] = useState(0)
     const [isCodeSynthesizing, setIsCodeSynthesizing] = useState(false)
+    const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+    
+    // SSE Client instance - persisted across renders
+    const sseClientRef = useRef<SSEClient>(new SSEClient());
+    
+    // Check if streaming API is configured
+    const streamingApiUrl = (window as any).APP_CONFIG?.STREAMING_API_URL;
+    const isStreamingReady = !!streamingApiUrl;
 
     useEffect(() => {
         console.log('App useEffect running');
@@ -76,18 +80,12 @@ export default function () {
         setIsLoading(false);
     }, []);
 
-    // WebSocket connection management
+    // Cleanup SSE client on unmount
     useEffect(() => {
-        if (!isLoading) {
-            connectWebSocket();
-        }
         return () => {
-            if (wsConnection) {
-                wsConnection.close();
-            }
-            setConnectionId(null);
+            sseClientRef.current.abort();
         };
-    }, [isLoading]);
+    }, []);
 
     const animateScanning = async () => {
 
@@ -131,139 +129,15 @@ export default function () {
         })
     }
 
-    const connectWebSocket = () => {
-        setConnectionStatus('connecting');
-        const wsUrl = (window as any).APP_CONFIG?.WEBSOCKET_URL;
-        if (!wsUrl) {
-            abortAll('WebSocket URL not configured')
-            setConnectionStatus('disconnected');
-            return;
-        }
-        console.log('Connecting to WebSocket:', wsUrl);
-        const ws = new WebSocket(wsUrl);
-
-        ws.onopen = () => {
-            console.log('WebSocket connected successfully');
-            setConnectionStatus('connected');
-            setWsConnection(ws);
-            
-            // Send ping to get connection ID
-            ws.send(JSON.stringify({
-                action: 'ping'
-            }));
-        };
-
-        ws.onmessage = (event) => {
-            try {
-                const message = JSON.parse(event.data);
-                console.log('WebSocket message received:', message.type, message);
-                handleWebSocketMessage(message);
-            } catch (e) {
-                abortAll('Error parsing WebSocket message:', e)
-            }
-        };
-
-        ws.onclose = (event) => {
-            console.log('WebSocket disconnected:', event.code, event.reason);
-            setConnectionStatus('disconnected');
-            setWsConnection(null);
-            setConnectionId(null);
-
-            // Auto-reconnect after 3 seconds if not a normal closure
-            if (event.code !== 1000 && isAuthenticated) {
-                setTimeout(() => {
-                    console.log('Attempting to reconnect WebSocket...');
-                    connectWebSocket();
-                }, 3000);
-            }
-        };
-
-        ws.onerror = (error) => {
-            abortAll("WebSocket connection failed. Please check your network connection.", error)
-            setConnectionStatus('disconnected');
-        };
-    };
-
-    const handleWebSocketMessage = (message: any) => {
-        switch (message.type) {
-            case 'connection_established':
-                setConnectionId(message.connectionId);
-                console.log('Connection ID received:', message.connectionId);
-                break;
-            case 'analysis_stream':
-                if (!analysisStartTime) {
-                    setAnalysisStartTime(Date.now());
-                }
-                setThinkingResponse(''); // Clear thinking when analysis starts
-                setAnalysisResponse(prev => prev + message.content);
-                break;
-            case 'thinking_stream':
-            case 'analysis_thinking_stream':
-            case 'optimization_thinking_stream':
-                setThinkingResponse(prev => prev + message.content);
-                break;
-            case 'cdk_modules_thinking_stream':
-                // Don't show thinking for CDK modules
-                break;
-            case 'cdk_modules_stream':
-                setThinkingResponse(''); // Clear thinking when CDK modules starts
-                setCdkModulesResponse(prev => prev + message.content);
-                break;
-            case 'cdk_modules_complete':
-                setCdkModulesComplete(true);
-                break;
-            case 'optimization_stream':
-                setThinkingResponse(''); // Clear thinking when optimization starts
-                setAnalysisResponse(prev => prev + message.content);
-                break;
-            case 'optimization_complete':
-                setOptimizeInProgress(false);
-                notif.success("Optimization completed");
-                break;
-            case 'stream':
-                setThinkingResponse(''); // Clear thinking when stream starts
-                setAnalysisResponse(prev => prev + message.content);
-                break;
-            case 'complete':
-                setAnalysisComplete(true);
-                break;
-            case 'synthesis_progress':
-                setIsScanning(false); // Hide scanning when synthesis starts
-                setCodeSynthesisProgress(message.progress);
-                break;
-            case 'code_ready':
-                setIsCodeSynthesizing(false);
-                setCodeSynthesisProgress(0);
-                setInProgress(false);
-                notif.notify({
-                    type: "success",
-                    content: (
-                        <span>
-                            {message.message} <a href={message.downloadUrl} target="_blank" rel="noopener noreferrer"
-                                                 style={{
-                                                     color: '#ffffff',
-                                                     textDecoration: 'underline',
-                                                     fontWeight: 'bold'
-                                                 }}>{message.downloadText}</a>
-                        </span>
-                    )
-                });
-                break;
-            case 'error':
-                abortAll(`Error: ${message.message}`)
-                break;
-        }
-    };
-
     useEffect(() => {
-        if (analysisComplete && cdkModulesComplete && analysisStartTime) {
+        if (analysisComplete && analysisStartTime) {
             const duration = ((Date.now() - analysisStartTime) / 1000).toFixed(2);
-            console.log('Both complete! Showing notification');
+            console.log('Analysis complete! Showing notification');
             setInProgress(false);
             setIsScanning(false);
             notif.success(`Analysis complete in ${duration} seconds`);
         }
-    }, [analysisComplete, cdkModulesComplete, analysisStartTime]);
+    }, [analysisComplete, analysisStartTime]);
 
     // Show loading state while checking authentication
     if (isLoading) {
@@ -298,30 +172,28 @@ export default function () {
         setInProgress(false);
         setOptimizeInProgress(false)
         setIsCodeSynthesizing(false);
+        sseClientRef.current.abort();
         console.error(msg, e);
         notif.error(msg);
     }
 
     async function onSubmit() {
-        if (!selectedImage || !wsConnection || connectionStatus !== 'connected') {
-            abortAll("WebSocket not connected. Please refresh the page.");
+        if (!selectedImage || !isStreamingReady) {
+            abortAll("Streaming API not configured. Please check your configuration.");
             return;
         }
 
-        if (!connectionId) {
-            abortAll("Connection ID not available. Please wait a moment and try again.");
-            return;
-        }
+        // Cancel any existing stream before starting a new one
+        // Requirements: 8.5, 8.6 - Stream cancellation for new requests
+        sseClientRef.current.abort();
 
         try {
             setInProgress(true)
             setAnalysisResponse('')
-            setCdkModulesResponse('')
             setThinkingResponse('')
             setContentType('analysis')
             setAnalysisStartTime(null)
             setAnalysisComplete(false)
-            setCdkModulesComplete(false)
 
 
             const [s3Key, animationDone] = await Promise.all([
@@ -329,30 +201,85 @@ export default function () {
                 animateScanning()
             ]);
 
-            // Send S3 key via WebSocket for analysis
+            // Start SSE stream for analysis
             setAnalysisStartTime(Date.now());
-            wsConnection.send(JSON.stringify({
-                action: 'analyze',
-                s3Key: s3Key,
-                language: language?.value
-            }));
-
+            
             console.log('Upload completed, stored S3 key:', s3Key);
-            console.log('Using connection ID for step function:', connectionId);
 
-            await triggerStepFunction(s3Key, language?.value!, connectionId || undefined)
+            // Start SSE streaming for analysis (before step function for code synthesis)
+            sseClientRef.current.startStream(
+                `${streamingApiUrl}/analyze`,
+                { action: 'analyze', s3Key, language: language?.value },
+                {
+                    onThinkingStream: (content: string) => {
+                        setThinkingResponse(prev => prev + content);
+                    },
+                    onAnalysisStream: (content: string) => {
+                        // Clear thinking when analysis starts
+                        setThinkingResponse('');
+                        setAnalysisResponse(prev => prev + content);
+                    },
+                    onCdkModulesStream: () => {},
+                    onOptimizationStream: (content: string) => {
+                        // Not used in analyze flow, but required by interface
+                        setThinkingResponse('');
+                        setAnalysisResponse(prev => prev + content);
+                    },
+                    onComplete: (eventType: string) => {
+                        if (eventType === 'analysis_complete' || eventType === '[DONE]') {
+                            setAnalysisComplete(true);
+                        }
+                    },
+                    onError: (error: Error) => {
+                        abortAll(error.message || "Error during streaming analysis");
+                    }
+                }
+            );
+
+            // Trigger step function for code synthesis (runs in parallel with SSE streaming)
+            const sfResult = await triggerStepFunction(s3Key, language?.value!)
             setIsCodeSynthesizing(true);
             setCodeSynthesisProgress(0);
+            setDownloadUrl(null);
+
+            // Poll DynamoDB-backed synthesis status for real progress and download link
+            if (sfResult.executionId) {
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const status = await checkSynthesisStatus(sfResult.executionId);
+                        setCodeSynthesisProgress(status.progress || 0);
+                        
+                        if (status.status === 'SUCCEEDED') {
+                            clearInterval(pollInterval);
+                            setIsCodeSynthesizing(false);
+                            if (status.downloadUrl) {
+                                setDownloadUrl(status.downloadUrl);
+                                notif.success('Code synthesis complete! Download is ready.');
+                            }
+                        } else if (status.status === 'FAILED') {
+                            clearInterval(pollInterval);
+                            setIsCodeSynthesizing(false);
+                            notif.error(`Code synthesis failed: ${status.error || 'Unknown error'}`);
+                        }
+                    } catch (e) {
+                        console.error('Error polling synthesis status:', e);
+                    }
+                }, 5000);
+            }
         } catch (e) {
             abortAll("Error analyzing architecture", e);
         }
     }
 
     async function onOptimize() {
-        if (!selectedImage || !wsConnection || connectionStatus !== 'connected') {
-            abortAll("WebSocket not connected or no image selected. Please refresh and try again.");
+        if (!selectedImage || !isStreamingReady) {
+            abortAll("Streaming API not configured or no image selected. Please check your configuration.");
             return;
         }
+
+        // Cancel any existing stream before starting a new one
+        // Requirements: 8.5, 8.6 - Stream cancellation for new requests
+        sseClientRef.current.abort();
 
         try {
             setOptimizeInProgress(true)
@@ -362,11 +289,36 @@ export default function () {
 
             const s3Key = await ensureImageUploaded();
 
-            // Send optimization request via WebSocket
-            wsConnection.send(JSON.stringify({
-                action: 'optimize',
-                s3Key: s3Key
-            }));
+            // Start SSE streaming for optimization
+            sseClientRef.current.startStream(
+                `${streamingApiUrl}/optimize`,
+                { action: 'optimize', s3Key },
+                {
+                    onThinkingStream: (content: string) => {
+                        setThinkingResponse(prev => prev + content);
+                    },
+                    onAnalysisStream: (content: string) => {
+                        // Not used in optimize flow, but required by interface
+                        setThinkingResponse('');
+                        setAnalysisResponse(prev => prev + content);
+                    },
+                    onCdkModulesStream: () => {},
+                    onOptimizationStream: (content: string) => {
+                        // Clear thinking when optimization content starts
+                        setThinkingResponse('');
+                        setAnalysisResponse(prev => prev + content);
+                    },
+                    onComplete: (eventType: string) => {
+                        if (eventType === 'optimization_complete' || eventType === '[DONE]') {
+                            setOptimizeInProgress(false);
+                            notif.success('Optimization complete');
+                        }
+                    },
+                    onError: (error: Error) => {
+                        abortAll(error.message || "Error during optimization streaming");
+                    }
+                }
+            );
 
         } catch (e) {
             abortAll("Error optimizing architecture", e)
@@ -400,16 +352,16 @@ export default function () {
                         <FormField>
                             <SpaceBetween direction="horizontal" size="s">
                                 <Button variant={"primary"}
-                                        disabled={!selectedImage || !language || isScanning || connectionStatus !== 'connected'}
-                                        disabledReason={connectionStatus !== 'connected' ? "WebSocket not connected" : "Please select image and language"}
+                                        disabled={!selectedImage || !language || isScanning || isCodeSynthesizing || !isStreamingReady}
+                                        disabledReason={!isStreamingReady ? "Streaming API not configured" : "Please select image and language"}
                                         onClick={x => onSubmit()}
-                                        loading={inProgress}
+                                        loading={inProgress || isCodeSynthesizing}
                                         loadingText={isScanning ? "Scanning..." : "Generating"}>
-                                    {isScanning ? "Scanning..." : inProgress ? "Generating..." : "Generate"}
+                                    {isScanning ? "Scanning..." : (inProgress || isCodeSynthesizing) ? "Generating..." : "Generate"}
                                 </Button>
                                 <Button variant={"primary"}
-                                        disabled={!selectedImage || isScanning || inProgress}
-                                        disabledReason={"Please select image"}
+                                        disabled={!selectedImage || isScanning || inProgress || isCodeSynthesizing || !isStreamingReady}
+                                        disabledReason={!isStreamingReady ? "Streaming API not configured" : "Please select image"}
                                         onClick={x => onOptimize()}
                                         loading={optimizeInProgress}
                                         loadingText={"Optimizing"}>
@@ -417,43 +369,17 @@ export default function () {
                                 </Button>
                             </SpaceBetween>
                         </FormField>
-                        <FormField>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px',
-                                backgroundColor: connectionStatus === 'connected' ? '#f0f9ff' : '#fef2f2',
-                                borderRadius: '4px',
-                                border: `1px solid ${connectionStatus === 'connected' ? '#0ea5e9' : '#ef4444'}`
-                            }}>
-                                <div style={{
-                                    width: '8px',
-                                    height: '8px',
-                                    borderRadius: '50%',
-                                    backgroundColor: connectionStatus === 'connected' ? '#22c55e' :
-                                        connectionStatus === 'connecting' ? '#f59e0b' : '#ef4444'
-                                }}/>
-                                <span style={{fontSize: '14px', fontWeight: '500'}}>
-                                                WebSocket: {connectionStatus === 'connected' ? 'Connected' :
-                                    connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
-                                            </span>
-                                {connectionStatus === 'disconnected' && (
-                                    <Button onClick={connectWebSocket}>Reconnect</Button>
-                                )}
-                            </div>
-                        </FormField>
                     </SpaceBetween>
                 </Container>
                 <Container>
-                    {cdkModulesResponse && (
-                        <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '18px'}}>CDK Modules
-                            Breakdown</div>
+                    {!downloadUrl && <div>Packaged code will be available to download here after synthesis</div>}
+                    {downloadUrl && (
+                        <div style={{marginTop: '16px', padding: '12px', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #0ea5e9'}}>
+                            <Button variant="primary" href={downloadUrl} target="_blank" iconName="download">
+                                Download Generated Code
+                            </Button>
+                        </div>
                     )}
-                    {!cdkModulesResponse && <div>CDK modules breakdown will appear here after processing</div>}
-                    <Markdown>
-                        {cdkModulesResponse}
-                    </Markdown>
                 </Container>
             </SpaceBetween>
             <Container>
@@ -472,13 +398,6 @@ export default function () {
                             <Markdown>{thinkingResponse}</Markdown>
                         </div>
                     </div>
-                )}
-                {contentType === 'analysis' && analysisResponse && (
-                    <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '18px'}}>Architecture Summary</div>
-                )}
-                {contentType === 'optimization' && analysisResponse && (
-                    <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '18px'}}>Recommended
-                        Optimizations</div>
                 )}
                 {!analysisResponse && !thinkingResponse &&
                     <div>

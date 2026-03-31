@@ -13,7 +13,7 @@ def handler(event, context):
         return {
             'statusCode': 200,
             'headers': {
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', ''),
                 'Access-Control-Allow-Methods': 'OPTIONS,POST',
                 'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
                 'Access-Control-Max-Age': '86400'
@@ -27,16 +27,13 @@ def handler(event, context):
         request_body = json.loads(event["body"])
         file_path = request_body.get('file_path')
         code_language = request_body.get('code_language')
-        connection_id = request_body.get('connection_id')
-        
-        print(f"Step function invoker received connection_id: {connection_id}")
         
         if not file_path or not code_language:
             return {
                 'statusCode': 400,
                 'headers': {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '')
                 },
                 'body': json.dumps({'error': 'file_path and code_language are required'}),
                 'isBase64Encoded': False
@@ -45,20 +42,22 @@ def handler(event, context):
         # Construct Step Function ARN
         step_function_arn = f'arn:aws:states:{os.environ["REGION"]}:{os.environ["ACCOUNT_ID"]}:stateMachine:A2A-Processing'
         
+        # Generate a unique execution name for tracking
+        import uuid
+        execution_id = str(uuid.uuid4())
+        
         # Invoke Step Function
         step_function_input = {
             "file_path": file_path,
-            "code_language": code_language
+            "code_language": code_language,
+            "execution_id": execution_id,
         }
-        
-        # Add connection_id if provided
-        if connection_id:
-            step_function_input["connection_id"] = connection_id
             
         print(f"Step function input: {step_function_input}")
             
         response = stepfunctions.start_execution(
             stateMachineArn=step_function_arn,
+            name=execution_id,
             input=json.dumps(step_function_input)
         )
         
@@ -66,13 +65,14 @@ def handler(event, context):
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', ''),
                 'Access-Control-Allow-Methods': 'OPTIONS,POST',
                 'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'
             },
             'body': json.dumps({
                 'message': 'Step Function execution started',
-                'executionArn': response['executionArn']
+                'executionArn': response['executionArn'],
+                'executionId': execution_id,
             }),
             'isBase64Encoded': False
         }
@@ -82,7 +82,7 @@ def handler(event, context):
             'statusCode': 500,
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '')
             },
             'body': json.dumps({'error': str(e)}),
             'isBase64Encoded': False

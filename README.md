@@ -39,14 +39,16 @@ https://private-user-images.githubusercontent.com/120046505/512905487-5695ddeb-4
 1. A CloudFront distribution provides secure HTTPS access to the application with Lambda@Edge authentication using Amazon Cognito
 2. An Amazon ECS Fargate service behind an Application Load Balancer hosts the React webserver for the application frontend
 3. Amazon Cognito User Pool provides user authentication and authorization
-4. WebSocket API Gateway enables real-time communication between frontend and backend services
-5. The uploaded diagrams are stored in an Amazon S3 bucket with CORS configuration for direct uploads
-6. Lambda functions handle presigned URL generation, WebSocket connections, and Step Function invocation
-7. The web responder Lambda invokes Amazon Bedrock API to perform image analysis using Claude models
-8. A comprehensive summary of the architecture is generated and sent via WebSocket for real-time updates
+4. REST API with Server-Sent Events (SSE) streaming via Lambda Function URLs enables real-time architecture analysis and optimization responses
+5. The uploaded diagrams are stored in an Amazon S3 bucket with encryption, versioning, and restricted CORS configuration
+6. Lambda functions handle presigned URL generation, streaming analysis, synthesis status polling, and Step Function invocation
+7. The streaming Lambda invokes Amazon Bedrock API (Claude Sonnet 4.5) to perform image analysis with response streaming
+8. Architecture analysis and optimization results are streamed in real-time to the frontend via SSE through CloudFront
 9. The generated architecture description is passed to a Step Function workflow for AWS CDK code generation
 10. The code generator Lambda (containerized) uses Perplexity API with multi-step reasoning to generate modular CDK stacks
-11. Generated code is stored in an Amazon S3 bucket and users receive download links via WebSocket notifications
+11. A DynamoDB table tracks code synthesis progress and stores download links, polled by the frontend for real-time status updates
+12. Generated code is stored in an Amazon S3 bucket and users receive download links through the web interface
+13. CloudFront Origin Access Control (OAC) with AWS IAM authentication secures the Lambda Function URL, preventing direct public access
 
 ### Cost
 You are responsible for the cost of the AWS services used while running this Guidance. The cost for running this Guidance with the default settings in the us-west-2 (Oregon) region is approximately $20 per month for conversion of around 50 architecture diagrams to IaC. Also major portion of the costs is a fixed cost related to the ECS, Fargate, and Application Load Balancer services being used to host the React web application. 
@@ -65,7 +67,7 @@ Perplexity API Key - Perplexity account and subscription required. The default m
 NOTE: Our team has evaluated Perplexity to provide the best results for this use case. Other providers can be substituted in place of Perplexity as is determined to best suit your requirements. To replace Perplexity with another model, update the code_generator_utils_v2.py file within the code-generator Lambda function with the url of the alternative model and obtain an API key. Customer's use of Perplexity or another third-party tool of their choosing is subject to the terms and conditions of such tool and it is Customer's sole responsibility to ensure they oblige by such terms.
 
 ### AWS Account Requirements
-Approved Bedrock access to Claude 4.0 Sonnet in the desired deployment region.
+Approved Bedrock access to Claude Sonnet 4.5 (or equivalent Claude model) in the desired deployment region.
 
 ### Supported Regions
 Any region that supports the required Claude models on Bedrock is a viable deployment target. 
@@ -101,6 +103,14 @@ Install the required dependencies for the Node.js CloudFront edge lambda functio
 ```bash
 cd src/lambda-functions/edge-lambda
 npm install
+cd ../../..
+```
+
+Install and build the streaming handler Lambda
+```bash
+cd src/lambda-functions/streaming-handler
+npm install
+npm run build
 cd ../../..
 ```
 
@@ -161,10 +171,11 @@ cdk deploy --all --require-approval never
 ## Running the Guidance
 1. Navigate to the CloudFront URL and authenticate using Cognito (sign up if first time)
 2. Upload a high quality PNG image of an AWS Architecture diagram for any Data Platform type architecture. These are generally derived from the AWS Modern Data Architecture Framework - reflecting capabilities for streaming, ETL, ingestion type architectures encompassing AWS Data, Analytics and Database services. A folder of architecture diagram samples has been provided in this repo.
-3. A2A-AI will first analyze the drawing and provide real-time updates via WebSocket connection showing the analysis progress
-4. The system provides a comprehensive description of what it sees and initiates the workflow for code synthesis in parallel
-5. Real-time progress updates are displayed as the multi-step code generation process executes
-6. Once code synthesis is completed, results are uploaded to the code output S3 bucket with a download link provided through the web interface
+3. Select your preferred output language (Python or TypeScript) and click "Generate"
+4. A2A-AI will analyze the drawing and stream the architecture analysis in real-time via Server-Sent Events (SSE)
+5. In parallel, the system initiates a Step Function workflow for CDK code synthesis with real-time progress tracking
+6. Once code synthesis is completed, a download button appears with a link to the generated CDK code package
+7. Use the "Optimize" button to get architecture optimization recommendations for cost, performance, security, and reliability
 
 ## Next Steps
 Users can explore the following customizations to adapt/optimize the solution to their preferences
@@ -174,7 +185,7 @@ Users can explore the following customizations to adapt/optimize the solution to
 2. Email notifications to end users: By default, this solution deploys an SNS topic that is intended for administrators to add their emails to. They will automatically be subscribed to the topic upon solution deployment and will receive a notification every time the service is used, along with a link to download the code output from S3. In order to enable webpage email input, SES can be integrated into the solution by having the Processing Lambda function send its output notifications to SES in addition to SNS. The solution is already configured to pass along a user’s email in the event payload to the Processing Lambda. Proper IAM permissions must be added to the function and SES configuration must be completed in the account separately.
 
 ## Cleanup
-Delete all 3 A2A Cloudformation stacks using the Cloudformation console or CDK destroy commands. All three S3 buckets deployed in this solution will automatically be emptied and deleted upon stack removal. Remove stacks in the following order to avoid failures due to cross-stack dependencies.
+Delete all A2A CloudFormation stacks using the CloudFormation console or CDK destroy commands. All three S3 buckets and the DynamoDB table deployed in this solution will automatically be emptied and deleted upon stack removal. Remove stacks in the following order to avoid failures due to cross-stack dependencies.
 ```bash
 cdk destroy A2A-AI-FrontEndStack
 cdk destroy A2A-AI-ProcessingStack

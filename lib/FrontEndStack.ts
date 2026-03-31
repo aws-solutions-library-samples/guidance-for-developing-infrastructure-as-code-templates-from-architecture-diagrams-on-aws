@@ -18,7 +18,9 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 
 interface Props extends cdk.StackProps {
   diagramStorageBucket: s3.Bucket;
-  webSocketUrl?: string;
+  streamingLambda?: lambda.IFunction;
+  streamingFunctionUrl?: lambda.FunctionUrl;
+  synthesisProgressTable: cdk.aws_dynamodb.Table;
 }
 
 export class FrontEndStack extends cdk.Stack {
@@ -51,10 +53,7 @@ export class FrontEndStack extends cdk.Stack {
         }),
       ],
     });
-    this.responderLambda.addPermission('AllowALBInvocation', {
-      principal: new iam.ServicePrincipal('elasticloadbalancing.amazonaws.com'),
-      action: 'lambda:InvokeFunction',
-    });
+    // ALB permission will be added after target group is created
 
     // ===== Lambda for Step Function invocation =====
     const stepFunctionInvoker = new lambda.Function(this, 'stepFunctionInvoker', {
@@ -74,9 +73,25 @@ export class FrontEndStack extends cdk.Stack {
         }),
       ],
     });
-    stepFunctionInvoker.addPermission('AllowALBInvocation', {
-      principal: new iam.ServicePrincipal('elasticloadbalancing.amazonaws.com'),
-      action: 'lambda:InvokeFunction',
+    // ALB permission will be added after target group is created
+
+    // ===== Lambda for synthesis status polling =====
+    const synthesisStatusLambda = new lambda.Function(this, 'synthesisStatusHandler', {
+      functionName: `a2a-synthesis-status`,
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('src/lambda-functions/synthesis-status'),
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        REGION: this.region,
+        SYNTHESIS_PROGRESS_TABLE: props.synthesisProgressTable.tableName,
+      },
+      initialPolicy: [
+        new iam.PolicyStatement({
+          actions: ['dynamodb:GetItem'],
+          resources: [props.synthesisProgressTable.tableArn],
+        }),
+      ],
     });
 
     // ===== ECS: Docker Asset, Cluster, ALB =====
@@ -153,6 +168,8 @@ export class FrontEndStack extends cdk.Stack {
         value: 'true'
       }
     ];
+    // Note: LambdaTarget automatically grants invoke permission
+    // The permission is scoped to elasticloadbalancing.amazonaws.com service principal
 
     const stepFunctionTargetGroup = new elbv2.ApplicationTargetGroup(this, 'StepFunctionTargetGroup', {
       targetType: elbv2.TargetType.LAMBDA,
@@ -166,6 +183,41 @@ export class FrontEndStack extends cdk.Stack {
         value: 'true'
       }
     ];
+    // Note: LambdaTarget automatically grants invoke permission
+
+    // ===== Synthesis Status Target Group =====
+    const synthesisStatusTargetGroup = new elbv2.ApplicationTargetGroup(this, 'SynthesisStatusTargetGroup', {
+      targetType: elbv2.TargetType.LAMBDA,
+      vpc: this.cluster.vpc,
+      targets: [new targets.LambdaTarget(synthesisStatusLambda)]
+    });
+    const cfnSynthesisStatusTargetGroup = synthesisStatusTargetGroup.node.defaultChild as elbv2.CfnTargetGroup;
+    cfnSynthesisStatusTargetGroup.targetGroupAttributes = [
+      { key: 'lambda.multi_value_headers.enabled', value: 'true' }
+    ];
+
+    // ===== Streaming Lambda Target Group =====
+    // Create target group for streaming Lambda if provided
+    let streamingTargetGroup: elbv2.ApplicationTargetGroup | undefined;
+    if (props.streamingLambda) {
+      streamingTargetGroup = new elbv2.ApplicationTargetGroup(this, 'StreamingLambdaTargetGroup', {
+        targetType: elbv2.TargetType.LAMBDA,
+        vpc: this.cluster.vpc,
+        targets: [new targets.LambdaTarget(props.streamingLambda)]
+      });
+
+      // Enable multi-value headers for Lambda integration
+      const cfnStreamingTargetGroup = streamingTargetGroup.node.defaultChild as elbv2.CfnTargetGroup;
+      cfnStreamingTargetGroup.targetGroupAttributes = [
+        {
+          key: 'lambda.multi_value_headers.enabled',
+          value: 'true'
+        }
+      ];
+
+      // Note: ALB permission for streaming Lambda is granted in ProcessingStack
+      // to avoid circular dependency between stacks
+    }
 
     // Basic Routing rules (for demo; production, move routing primarily to CloudFront!)
     this.service.listener.addAction('RootPath', {
@@ -183,10 +235,37 @@ export class FrontEndStack extends cdk.Stack {
       conditions: [elbv2.ListenerCondition.pathPatterns(['/api/step-function']), elbv2.ListenerCondition.httpRequestMethods(['POST', 'OPTIONS'])],
       priority: 3
     });
+    this.service.listener.addAction('SynthesisStatusRoute', {
+      action: elbv2.ListenerAction.forward([synthesisStatusTargetGroup]),
+      conditions: [elbv2.ListenerCondition.pathPatterns(['/api/synthesis-status']), elbv2.ListenerCondition.httpRequestMethods(['POST', 'OPTIONS'])],
+      priority: 4
+    });
+
+    // Add streaming endpoint routes if streaming Lambda is configured
+    // These must have lower priority numbers than StaticContent to be evaluated first
+    if (streamingTargetGroup) {
+      this.service.listener.addAction('StreamAnalyzeRoute', {
+        action: elbv2.ListenerAction.forward([streamingTargetGroup]),
+        conditions: [elbv2.ListenerCondition.pathPatterns(['/api/stream/analyze']), elbv2.ListenerCondition.httpRequestMethods(['POST', 'OPTIONS'])],
+        priority: 5
+      });
+      this.service.listener.addAction('StreamOptimizeRoute', {
+        action: elbv2.ListenerAction.forward([streamingTargetGroup]),
+        conditions: [elbv2.ListenerCondition.pathPatterns(['/api/stream/optimize']), elbv2.ListenerCondition.httpRequestMethods(['POST', 'OPTIONS'])],
+        priority: 6
+      });
+      this.service.listener.addAction('StreamCdkModulesRoute', {
+        action: elbv2.ListenerAction.forward([streamingTargetGroup]),
+        conditions: [elbv2.ListenerCondition.pathPatterns(['/api/stream/cdk-modules']), elbv2.ListenerCondition.httpRequestMethods(['POST', 'OPTIONS'])],
+        priority: 7
+      });
+    }
+
+    // Static content catch-all - must have highest priority number (lowest precedence)
     this.service.listener.addAction('StaticContent', {
       action: elbv2.ListenerAction.forward([this.service.targetGroup]),
       conditions: [elbv2.ListenerCondition.pathPatterns(['/*'])],
-      priority: 4
+      priority: 100
     });
 
     // ===== Lambda@Edge ====
@@ -209,6 +288,20 @@ export class FrontEndStack extends cdk.Stack {
       ]
     });
 
+    // ===== Lambda Function URL Origin for streaming =====
+    // Create origin for Lambda Function URL with OAC (Origin Access Control)
+    // Uses CDK's built-in FunctionUrlOrigin.withOriginAccessControl for proper OAC setup
+    let streamingLambdaOrigin: cloudfront.IOrigin | undefined;
+    if (props.streamingFunctionUrl && props.streamingLambda) {
+      streamingLambdaOrigin = origins.FunctionUrlOrigin.withOriginAccessControl(props.streamingFunctionUrl, {
+        originAccessControl: new cloudfront.FunctionUrlOriginAccessControl(this, 'StreamingLambdaOAC', {
+          originAccessControlName: 'a2a-streaming-lambda-oac-v2',
+          signing: cloudfront.Signing.SIGV4_ALWAYS,
+        }),
+        readTimeout: cdk.Duration.seconds(60),
+        originId: 'streaming-lambda-origin',
+      });
+    }
     // ===== CloudFront Distribution pointing to ALB, auth via Edge Lambda =====
     
     // CloudFront function to handle CORS OPTIONS requests
@@ -217,6 +310,14 @@ export class FrontEndStack extends cdk.Stack {
       code: cloudfront.FunctionCode.fromFile({
         filePath: path.join(__dirname, '../src/lambda-functions/cors-function/index.js')
       }),
+    });
+
+    // Create ALB origin with extended timeout for streaming endpoints
+    // CloudFront origin readTimeout default max is 60 seconds (can request quota increase to 180s)
+    // For longer streaming operations, the Lambda will keep the connection alive with periodic heartbeats
+    const streamingAlbOrigin = new origins.LoadBalancerV2Origin(this.service.loadBalancer, {
+      protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+      readTimeout: cdk.Duration.seconds(60)
     });
 
     this.cloudFrontDistribution = new cloudfront.Distribution(this, "CloudFrontDistribution", {
@@ -236,6 +337,22 @@ export class FrontEndStack extends cdk.Stack {
         compress: false,
       },
       additionalBehaviors: {
+        // Streaming endpoints behavior - uses Lambda Function URL with OAC
+        '/api/stream/*': {
+          origin: streamingLambdaOrigin || streamingAlbOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          // Must NOT forward Host header - OAC signs with the origin's host
+          // ALL_VIEWER_EXCEPT_HOST_HEADER forwards all viewer headers except Host
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
+          functionAssociations: [{
+            function: corsFunction,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          }],
+          compress: false,
+        },
         '/api/*': {
           origin: new origins.LoadBalancerV2Origin(this.service.loadBalancer, {
             protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
@@ -332,14 +449,50 @@ export class FrontEndStack extends cdk.Stack {
       })
     });
 
-    // Add WebSocket URL as environment variable for ECS
-    if (props.webSocketUrl) {
-      this.service.taskDefinition.defaultContainer?.addEnvironment('REACT_APP_WEBSOCKET_URL', props.webSocketUrl);
-    }
+    // Add streaming API URL as environment variable for ECS
+    // Route through CloudFront for authentication (Lambda@Edge) and OAC signing
+    this.service.taskDefinition.defaultContainer?.addEnvironment(
+      'REACT_APP_STREAMING_API_URL',
+      `https://${this.cloudFrontDistribution.distributionDomainName}/api/stream`
+    );
     
     // Add AWS account ID and region for S3 bucket name construction
     this.service.taskDefinition.defaultContainer?.addEnvironment('AWS_ACCOUNT_ID', this.account);
     this.service.taskDefinition.defaultContainer?.addEnvironment('AWS_REGION', this.region);
+
+    // Set ALLOWED_ORIGIN for CORS on all Lambdas (restricts Access-Control-Allow-Origin)
+    const allowedOrigin = `https://${this.cloudFrontDistribution.distributionDomainName}`;
+    this.responderLambda.addEnvironment('ALLOWED_ORIGIN', allowedOrigin);
+    stepFunctionInvoker.addEnvironment('ALLOWED_ORIGIN', allowedOrigin);
+    synthesisStatusLambda.addEnvironment('ALLOWED_ORIGIN', allowedOrigin);
+
+    // Update the streaming Lambda's ALLOWED_ORIGIN env var using a custom resource
+    // This avoids a circular dependency between ProcessingStack and FrontEndStack
+    if (props.streamingLambda) {
+      new cdk.custom_resources.AwsCustomResource(this, 'UpdateStreamingLambdaOrigin', {
+        onUpdate: {
+          service: 'Lambda',
+          action: 'updateFunctionConfiguration',
+          parameters: {
+            FunctionName: props.streamingLambda.functionName,
+            Environment: {
+              Variables: {
+                DIAGRAM_BUCKET: props.diagramStorageBucket.bucketName,
+                REGION: this.region,
+                ALLOWED_ORIGIN: allowedOrigin,
+              },
+            },
+          },
+          physicalResourceId: cdk.custom_resources.PhysicalResourceId.of('streaming-lambda-origin-update'),
+        },
+        policy: cdk.custom_resources.AwsCustomResourcePolicy.fromStatements([
+          new iam.PolicyStatement({
+            actions: ['lambda:UpdateFunctionConfiguration'],
+            resources: [props.streamingLambda.functionArn],
+          }),
+        ]),
+      });
+    }
 
     // ===== Output URLs and UserPool IDs =====
     new cdk.CfnOutput(this, 'CloudFrontUrl', {
@@ -355,9 +508,9 @@ export class FrontEndStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'CognitoUserPoolDomain', {
       value: `${this.userPoolDomain.domainName}.auth.${this.region}.amazoncognito.com`,
     });
-    new cdk.CfnOutput(this, 'WebSocketUrl', {
-      value: props.webSocketUrl || 'Not provided',
-      description: 'WebSocket API URL for real-time communication'
+    new cdk.CfnOutput(this, 'StreamingApiUrl', {
+      value: `https://${this.cloudFrontDistribution.distributionDomainName}/api/stream`,
+      description: 'Streaming API URL (routed through CloudFront with auth)',
     });
   }
 }

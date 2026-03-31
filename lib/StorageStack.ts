@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
 interface Props extends cdk.StackProps {
@@ -8,25 +9,30 @@ interface Props extends cdk.StackProps {
 export class StorageStack extends cdk.Stack {
   public readonly diagramStorageBucket: s3.Bucket;
   public readonly codeOutputBucket: s3.Bucket;
+  public readonly synthesisProgressTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
-    //Define bucket props
-    const bucketProps = {
+    // Common security settings for all buckets
+    const securityProps = {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: false,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      versioned: true,
     };
 
     //Create S3 bucket for user uploaded images
     this.diagramStorageBucket = new s3.Bucket(this, 'StorageBucket', {
-      ...bucketProps,
+      ...securityProps,
       bucketName: `a2a-${this.account}-diagramstorage-${this.region}`,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      // CORS is required for presigned URL uploads from browser
+      // Origins will be restricted after CloudFront domain is known
       cors: [{
         allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
-        allowedOrigins: ['*'],
+        allowedOrigins: ['https://*.cloudfront.net'],
         allowedHeaders: ['*'],
         maxAge: 3000
       }]
@@ -34,9 +40,17 @@ export class StorageStack extends cdk.Stack {
 
     // Create S3 bucket for generated CDK code
     this.codeOutputBucket = new s3.Bucket(this, 'codeOutputBucket', {
+      ...securityProps,
       bucketName: `a2a-${this.account}-codeoutput-${this.region}`,
+    });
+
+    // DynamoDB table for tracking code synthesis progress
+    this.synthesisProgressTable = new dynamodb.Table(this, 'SynthesisProgressTable', {
+      tableName: 'a2a-synthesis-progress',
+      partitionKey: { name: 'executionId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      timeToLiveAttribute: 'ttl',
     });
   }
 }
