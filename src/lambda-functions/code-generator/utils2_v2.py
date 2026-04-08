@@ -153,6 +153,17 @@ def copy_file_to_s3(local_file_path, bucket_name):
     return final_s3_path, s3_key
 
 
+def write_resource_spec_to_file(resource_spec, local_dir, stack_dirname):
+    """Write resource spec JSON to resource_spec.json in the stack output directory."""
+    makedirpath = os.path.join(local_dir, stack_dirname)
+    os.makedirs(makedirpath, exist_ok=True)
+    filepath = os.path.join(makedirpath, 'resource_spec.json')
+    with open(filepath, 'w') as f:
+        json.dump(resource_spec, f, indent=2)
+    print("RESOURCE SPEC FILE PATH", filepath)
+    return filepath
+
+
 def zip_directory(source_dir):
     """
    
@@ -184,7 +195,8 @@ def load_yaml_data(file_path):
             'architecture_description_prompt',
             'staging_prompt_template',
             'modules_description_prompt',
-            'deployment_sequence_prompt'
+            'deployment_sequence_prompt',
+            'resource_spec_prompt'
         ]
         
         result = {}

@@ -102,7 +102,7 @@ export class FrontEndStack extends cdk.Stack {
 
     this.cluster = new ecs.Cluster(this, `cluster`, {
       clusterName: `A2A-ECS-Cluster`,
-      containerInsights: true,
+      containerInsightsV2: ecs.ContainerInsights.ENABLED,
     });
 
     // ==== ALB + Fargate ====
@@ -121,7 +121,8 @@ export class FrontEndStack extends cdk.Stack {
           })
         },
         publicLoadBalancer: true,
-        protocol: elbv2.ApplicationProtocol.HTTP
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        minHealthyPercent: 100,
       });
 
     // Custom security group for ALB that only allows CloudFront traffic

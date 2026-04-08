@@ -72,7 +72,6 @@ Approved Bedrock access to Claude Sonnet 4.5 (or equivalent Claude model) in the
 ### Supported Regions
 Any region that supports the required Claude models on Bedrock is a viable deployment target. 
 This currently includes: us-east-1, us-west-2, eu-central-1, ap-northeast-1, and ap-southeast-1.
-NOTE: us-east-1 is currently experiencing throttling issues with Claude 4.0 Sonnet. Deployment to other regions is strongly advised.
 
 ## Deployment Steps
 
@@ -233,9 +232,7 @@ Online LLM icon- AI icon  by Merlin D, from The Noun Project CC BY 3.0
 Search Index Icon - Search icon by Wilson Joseph, from The Noun Project CC BY 3.0 
 
 ## Improvements Coming Soon
-- Front End improvements
 - Support for Terraform output
-- Generation of supporting files such as Lambda function source code
 
 ## Authors
 Srikrishna Chaitanya Konduru, Benjamin Pawlowski, Srikanth Potu, Bertram Varga

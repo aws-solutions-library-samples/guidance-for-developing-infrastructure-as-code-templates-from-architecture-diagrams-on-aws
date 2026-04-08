@@ -119,6 +119,74 @@ staging_prompt_template: |
       - Make it modular and maintainable 
       - Include environment variable support. 
       - Absolutely make sure to exclude any other supporting text , notes or comments in your response except the codeblock."
+resource_spec_prompt: |
+  "You are an AWS Solutions Architect producing a detailed resource specification that will be used to generate complete, working application code. Given the following architecture description, extract every AWS resource that requires developer-written application code.
+
+  Return ONLY a JSON object with this structure:
+  {
+    \"resources\": [
+      {
+        \"type\": \"lambda|ecs-container|step-function-definition|custom-resource-handler\",
+        \"name\": \"<DescriptiveName>\",
+        \"runtime\": \"python3.12|nodejs20.x|etc\",
+        \"handler\": \"<handler_file>.<function>\",
+        \"description\": \"<concise summary of purpose>\",
+        \"triggers\": [\"api-gateway|appsync|s3-event|sqs|sns|step-function|schedule|dynamodb-stream|kinesis|etc\"],
+        \"vpc\": true|false,
+        \"dependencies\": [\"<pip or npm package names beyond the standard AWS SDK>\"],
+        \"environment\": [\"<ENV_VAR_NAME>\"],
+        \"iam_actions\": [\"<service:Action>\"],
+        \"data_models\": {
+          \"<logical_name>\": {
+            \"service\": \"dynamodb|neptune|opensearch|s3|rds|etc\",
+            \"env_var\": \"<ENV_VAR referencing this resource>\",
+            \"partition_key\": {\"name\": \"<key>\", \"type\": \"S|N\"},
+            \"sort_key\": {\"name\": \"<key>\", \"type\": \"S|N\"},
+            \"attributes\": {\"<attr>\": \"S|N|BOOL|L|M\"},
+            \"vertices\": [{\"label\": \"<Label>\", \"properties\": [\"<prop>\"]}],
+            \"edges\": [{\"label\": \"<Label>\", \"from\": \"<Vertex>\", \"to\": \"<Vertex>\", \"properties\": [\"<prop>\"]}],
+            \"index_fields\": {\"<field>\": \"keyword|text|integer|float|boolean|date\"}
+          }
+        },
+        \"operations\": [
+          {
+            \"field\": \"<operation or route name>\",
+            \"type\": \"query|mutation|GET|POST|PUT|DELETE|event-handler\",
+            \"description\": \"<what this operation does>\",
+            \"input\": {\"<param>\": \"string|number|boolean|string!\"},
+            \"output\": {\"<field>\": \"string|number|boolean|[Object]\"},
+            \"logic\": \"<step-by-step implementation description in plain English>\"
+          }
+        ],
+        \"connection_config\": {
+          \"type\": \"http|websocket|sdk\",
+          \"endpoint_env\": \"<ENV_VAR>\",
+          \"note\": \"<connection reuse or pooling guidance>\"
+        },
+        \"error_handling\": \"<error response format and strategy>\"
+      }
+    ]
+  }
+
+  Field guidance:
+  - data_models: Include only the fields relevant to the backing service. Use partition_key/sort_key/attributes for DynamoDB, vertices/edges for Neptune, index_fields for OpenSearch. Omit inapplicable fields.
+  - operations: List every discrete action the code must handle. The 'logic' field should describe the implementation steps clearly enough to write the code — e.g. 'Query DynamoDB by userId partition key, filter by status=active, return items sorted by createdAt descending'.
+  - connection_config: Only include for resources that connect to non-SDK endpoints (Neptune, OpenSearch, RDS, external APIs). Omit for pure SDK services like DynamoDB or S3.
+  - dependencies: List packages beyond boto3/aws-sdk that are needed (e.g. gremlinpython, opensearch-py, requests, express).
+  - vpc: Set true if the function must run inside a VPC to reach its backing services.
+
+  Rules:
+  - Only include resources that need developer-written application code (not CDK infrastructure code)
+  - For Lambda functions, infer the most appropriate runtime from context
+  - For ECS containers, use 'dockerfile_base' instead of 'runtime' and 'handler', and use route-style operations
+  - For step-function-definition, include a 'states' array listing state names and types
+  - For custom-resource-handler, include Create/Update/Delete as operations
+  - Infer data models, operations, and logic from the architecture description — be specific, not generic
+  - If no resources need application code, return {\"resources\": []}
+  - Return ONLY the JSON, no other text
+
+  Architecture Description:
+  "
 deployment_sequence_prompt: |
     "You are an AWS Solutions Architect specializing in AWS CDK infrastructure deployment. Your task is to:
     1. Analyze the provided AWS architecture components/modules described in a JSON structure2. Determine the optimal deployment sequence based on dependencies and AWS best practices3. Modify the JSON by:   - Reordering the items in the "Module List" field to reflect the correct deployment sequence   - Replacing the word "module" with "Stack" only within the pythonic list in the "Module List" field   - Preserving all other JSON elements exactly as they are.

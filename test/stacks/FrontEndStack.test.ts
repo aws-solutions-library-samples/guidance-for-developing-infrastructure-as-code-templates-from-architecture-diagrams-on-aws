@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { FrontEndStack } from '../../lib/FrontEndStack';
 
@@ -42,6 +43,9 @@ describe('FrontEndStack', () => {
       const stackWithStreaming = new FrontEndStack(app, 'TestFrontEndStackWithStreaming', {
         diagramStorageBucket,
         streamingLambda: mockStreamingLambda,
+        synthesisProgressTable: new dynamodb.Table(storageStack, 'SynthesisProgressTable', {
+          partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+        }),
         env,
       });
       templateWithStreaming = Template.fromStack(stackWithStreaming);
@@ -274,6 +278,9 @@ describe('FrontEndStack', () => {
       // Create FrontEndStack WITHOUT streaming Lambda
       const stackWithoutStreaming = new FrontEndStack(app, 'TestFrontEndStackWithoutStreaming', {
         diagramStorageBucket,
+        synthesisProgressTable: new dynamodb.Table(storageStack, 'SynthesisProgressTable', {
+          partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+        }),
         env,
       });
       templateWithoutStreaming = Template.fromStack(stackWithoutStreaming);

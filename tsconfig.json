@@ -22,6 +22,7 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "outDir": "./dist",
+    "skipLibCheck": true,
     "typeRoots": [
       "./node_modules/@types"
     ],
@@ -30,6 +31,7 @@
   "exclude": [
     "node_modules",
     "./dist",
-    "cdk.out"
+    "cdk.out",
+    "src/ecs"
   ]
 }

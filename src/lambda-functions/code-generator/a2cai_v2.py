@@ -248,6 +248,31 @@ def generate_deployment_sequence(modules_description , deployment_sequence_promp
         return deployment_sequence_dict
     
     
+def generate_resource_spec(architecture_description_dict, resource_spec_prompt):
+    """Generate a resource spec JSON from the architecture description using Bedrock."""
+    architecture_description = architecture_description_dict['architecture_description']
+    prompt = resource_spec_prompt + architecture_description
+
+    request_body = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 16000,
+        "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
+    }
+
+    response = bedrock_runtime.invoke_model(
+        modelId='us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+        body=json.dumps(request_body),
+    )
+    response_body = json.loads(response['body'].read())
+
+    if isinstance(response_body['content'], list) and len(response_body['content']) > 0:
+        raw_text = response_body['content'][0].get('text', '')
+        print("Resource Spec Response", raw_text)
+        return extract_json_from_response(raw_text)
+
+    return {"resources": []}
+
+
 def generate_module_prompts(deployment_sequence_dict, language_name):
     
     # Parse dictionary
@@ -372,7 +397,8 @@ async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, 
     arch_prompt=prompt_config_dict['architecture_description_prompt']      # Prompt to generate architecture description
     modules_description_prompt=prompt_config_dict['modules_description_prompt']       # Prompt to generate modules description
     staging_prompt_template=prompt_config_dict['staging_prompt_template']        # prompt Template to generate a staging file
-    deployment_sequence_prompt=prompt_config_dict['deployment_sequence_prompt']  
+    deployment_sequence_prompt=prompt_config_dict['deployment_sequence_prompt']
+    resource_spec_prompt=prompt_config_dict['resource_spec_prompt']  
 
     # Step 1: Download Architecture drawing from s3
     await send_progress_update(10)
@@ -386,8 +412,10 @@ async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, 
     await send_progress_update(30)
     arch_description_dict=generate_architecture_description(arch_prompt, encoded_image)
     
-    # Step 4: Render JSON with Modular descriptions
+    # Step 4: Render JSON with Modular descriptions + Generate resource spec in parallel
     await send_progress_update(40)
+    loop = asyncio.get_event_loop()
+    resource_spec_future = loop.run_in_executor(None, generate_resource_spec, arch_description_dict, resource_spec_prompt)
     module_descriptions=generate_module_descriptions(arch_description_dict , modules_description_prompt)
 
     # Step 5: Render JSON with Deployment Sequence
@@ -413,7 +441,11 @@ async def a2c_ai_do_it_all(s3_uri, local_dir,code_language, prompt_config_dict, 
     await send_progress_update(90)
     codefilepath= await (generate_staging_file (staging_prompt_dict, code_language,  local_dir, stack_logfiles_dir,stack_dirname, api_key, model_name))
     
-    # Step 10: zip the directory
+    # Step 10: Collect resource spec (started in parallel at Step 4)
+    resource_spec = await resource_spec_future
+    write_resource_spec_to_file(resource_spec, local_dir, stack_dirname)
+    
+    # Step 11: zip the directory
     await send_progress_update(100)
     zipfilepath = zip_directory(stack_dirname)
     

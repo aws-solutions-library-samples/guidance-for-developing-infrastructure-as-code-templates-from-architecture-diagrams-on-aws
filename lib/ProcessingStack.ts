@@ -124,7 +124,7 @@ export class ProcessingStack extends cdk.Stack {
 
     const stateMachine = new sfn.StateMachine(this, 'StateMachine', {
       stateMachineName: `A2A-Processing`,
-      definition: lambdaProcessingTask,
+      definitionBody: sfn.DefinitionBody.fromChainable(lambdaProcessingTask),
     });
 
     // Output Streaming Lambda ARN for FrontEndStack
