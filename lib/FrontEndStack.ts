@@ -430,8 +430,17 @@ export class FrontEndStack extends cdk.Stack {
     this.userPoolDomain = this.userPool.addDomain('UserPoolDomain', {
       cognitoDomain: {
         domainPrefix: `a2a-auth-${this.account.substring(0, 8)}`
-      }
+      },
+      managedLoginVersion: cognito.ManagedLoginVersion.NEWER_MANAGED_LOGIN,
     });
+
+    // Managed Login requires a branding configuration to render the login page
+    new cognito.CfnManagedLoginBranding(this, 'ManagedLoginBranding', {
+      userPoolId: this.userPool.userPoolId,
+      clientId: this.userPoolClient.userPoolClientId,
+      useCognitoProvidedValues: true,
+    });
+
     // Save Cognito settings as Secrets for access by Lambda@Edge/CloudFront auth Lambda
     const cognitoSecret = new secretsmanager.Secret(this, 'CognitoClientSecrets', {
       secretName: "a2a-cognitoClientSecrets-frontend",

@@ -1,6 +1,9 @@
 # Build stage
 FROM public.ecr.aws/docker/library/node:24-alpine AS build
 
+# Upgrade Alpine system packages to patch known vulnerabilities
+RUN apk upgrade --no-cache
+
 # Set working directory
 WORKDIR /app
 
@@ -18,6 +21,9 @@ RUN npm run build
 
 # Production stage
 FROM public.ecr.aws/nginx/nginx:stable-alpine
+
+# Upgrade Alpine system packages to patch known vulnerabilities (zlib, openssl, libpng, musl, util-linux)
+RUN apk upgrade --no-cache
 
 # # Copy the built assets from the build stage
 COPY --from=build /app/build /usr/share/nginx/html
