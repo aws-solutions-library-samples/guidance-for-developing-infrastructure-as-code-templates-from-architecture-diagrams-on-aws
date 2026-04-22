@@ -281,24 +281,6 @@ def load_stack_generation_prompts(file_path):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
-def load_api_key(file_path):
-    try:
-        with open(file_path, 'r') as file:
-            data = yaml.safe_load(file)
-
-        if 'API_KEY' in data:
-            return data['API_KEY']
-        else:
-            print("Warning: Key 'api_key' not found in the YAML file.")
-            return None
-    except FileNotFoundError:
-        print(f"Error: File '{file_path}' not found.")
-    except yaml.YAMLError as e:
-        print(f"Error: Failed to parse YAML file. {e}")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-
-
 async def send_progress_update(progress):
     """
     Write progress update to DynamoDB synthesis progress table.

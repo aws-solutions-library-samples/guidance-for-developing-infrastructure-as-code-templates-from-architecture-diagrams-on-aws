@@ -393,6 +393,7 @@ export class FrontEndStack extends cdk.Stack {
       selfSignUpEnabled: true,
       signInAliases: { email: true },
       autoVerify: { email: true },
+      featurePlan: cognito.FeaturePlan.ESSENTIALS,
       passwordPolicy: {
         minLength: 8,
         requireLowercase: true,
