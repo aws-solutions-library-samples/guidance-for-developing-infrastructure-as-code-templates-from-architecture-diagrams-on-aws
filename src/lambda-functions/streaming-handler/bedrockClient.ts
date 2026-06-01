@@ -80,7 +80,7 @@ export class BedrockStreamingClient {
 
   constructor(config?: Partial<BedrockStreamConfig>) {
     const region = config?.region || process.env.REGION || process.env.AWS_REGION || 'us-west-2';
-    this.modelId = config?.modelId || process.env.BEDROCK_MODEL_ID || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+    this.modelId = config?.modelId || process.env.BEDROCK_MODEL_ID || 'us.anthropic.claude-sonnet-4-6';
 
     this.bedrockClient = new BedrockRuntimeClient({ region });
     this.s3Client = new S3Client({ region });

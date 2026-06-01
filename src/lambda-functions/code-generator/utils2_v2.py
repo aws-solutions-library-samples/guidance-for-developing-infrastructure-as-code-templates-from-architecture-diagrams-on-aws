@@ -25,18 +25,65 @@ def get_stack_name():
     return  stack_dirname, stack_logfiles_dir
 
 
+def _extract_code_block(response_text, code_language):
+    """
+    Extract the code body from an LLM response.
+
+    Tolerates the common formatting variations that occasionally cause the
+    Perplexity / sonar-pro response to deviate from the strict
+    ``` ```python\n...\n``` ``` shape that the previous implementation
+    required. Tries patterns in order of specificity and falls back to
+    using the entire response (stripped) when no fence can be detected.
+    A warning is printed in the fallback case so the raw response is
+    visible in CloudWatch for debugging.
+    """
+    if not response_text or not response_text.strip():
+        raise ValueError(
+            "Empty response from model — cannot extract code block."
+        )
+
+    lang = (code_language or "").lower()
+    lang_alternatives = {
+        "python":     r"(?:python|py)",
+        "typescript": r"(?:typescript|tsx|ts)",
+    }
+    lang_pattern = lang_alternatives.get(lang, re.escape(lang))
+
+    # Patterns are tried in priority order. We allow 3-or-more backticks
+    # (or the legacy 2-backtick form), an optional language tag with any
+    # surrounding whitespace, and an optional trailing newline before the
+    # closing fence.
+    patterns = [
+        # Preferred: fenced block whose language tag matches the requested language
+        rf"`{{2,}}[ \t]*{lang_pattern}\b[^\n]*\n(.*?)\n?[ \t]*`{{2,}}",
+        # Any fenced block (e.g. no language tag, or a different tag)
+        r"`{2,}[^\n]*\n(.*?)\n?[ \t]*`{2,}",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, response_text, re.DOTALL | re.IGNORECASE)
+        if match and match.group(1).strip():
+            return match.group(1)
+
+    # Fallback: the model returned no recognisable fence. Use the whole
+    # response so downstream packaging still produces a deployable artifact
+    # for the user to fix up, rather than crashing the entire Step Function.
+    preview = response_text[:500].replace("\n", "\\n")
+    print(
+        "WARNING: write_code_to_file/_extract_code_block could not locate a "
+        "fenced code block in the model response; falling back to the raw "
+        f"response. code_language={code_language!r} response_head={preview!r}"
+    )
+    return response_text.strip()
+
+
 def write_code_to_file(code_str, local_dir, stack_dirname, code_language, module_name):
     """
     writes genearetd code strings of modules to code files in the local stack folder
     """
 
-    if code_language.lower() == 'python':
-        pattern = r'``python\n(.*?)\n``'
-    elif code_language.lower() == 'typescript':
-        pattern = r'``typescript\n(.*?)\n``'
+    code = _extract_code_block(code_str, code_language)
 
-    code = re.search(pattern, code_str, re.DOTALL).group(1)
-    
     makedirpath =os.path.join(local_dir,stack_dirname) 
     os.makedirs(makedirpath, exist_ok=True)
     print("CODE DIR PATH", makedirpath)
@@ -60,11 +107,7 @@ def write_staging_code_to_file(code_str, local_dir, stack_dirname, code_language
     """
     writes code to app.py file in the local stack folder
     """
-    
-    if code_language.lower() == 'python':
-        pattern = r'``python\n(.*?)\n``'
-    elif code_language.lower() == 'typescript':
-        pattern = r'``typescript\n(.*?)\n``'
+
     makedirpath =os.path.join(local_dir,stack_dirname) 
     os.makedirs(makedirpath, exist_ok=True)
     
@@ -75,7 +118,7 @@ def write_staging_code_to_file(code_str, local_dir, stack_dirname, code_language
     
    
     code_file_path = os.path.join(makedirpath, filename)
-    code = re.search(pattern, code_str, re.DOTALL).group(1)
+    code = _extract_code_block(code_str, code_language)
     
     with open(code_file_path, 'w') as f:
         f.write(code)
@@ -299,7 +342,13 @@ async def send_progress_update(progress):
         update_expr = 'SET progress = :p, #s = :s, updatedAt = :u, #t = :ttl'
         expr_values = {
             ':p': progress,
-            ':s': 'RUNNING' if progress < 100 else 'SUCCEEDED',
+            # NOTE: never flip to SUCCEEDED here, even at progress=100. The
+            # final SUCCEEDED transition is owned by send_download_notification
+            # so that status='SUCCEEDED' is only written *together* with the
+            # downloadUrl. Otherwise the frontend (which stops polling on
+            # SUCCEEDED) would miss the download URL written a few seconds
+            # later after zipping/uploading/presigning the artifact.
+            ':s': 'RUNNING',
             ':u': int(time.time()),
             ':ttl': int(time.time()) + 86400,  # 24 hour TTL
         }

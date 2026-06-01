@@ -249,13 +249,16 @@ export default function () {
                         const status = await checkSynthesisStatus(sfResult.executionId);
                         setCodeSynthesisProgress(status.progress || 0);
                         
-                        if (status.status === 'SUCCEEDED') {
+                        if (status.status === 'SUCCEEDED' && status.downloadUrl) {
+                            // Only treat SUCCEEDED as terminal once the download URL
+                            // is actually present. The backend writes status=SUCCEEDED
+                            // and downloadUrl together via send_download_notification,
+                            // but if a stale row ever has SUCCEEDED without a URL we
+                            // keep polling rather than silently stalling the UI.
                             clearInterval(pollInterval);
                             setIsCodeSynthesizing(false);
-                            if (status.downloadUrl) {
-                                setDownloadUrl(status.downloadUrl);
-                                notif.success('Code synthesis complete! Download is ready.');
-                            }
+                            setDownloadUrl(status.downloadUrl);
+                            notif.success('Code synthesis complete! Download is ready.');
                         } else if (status.status === 'FAILED') {
                             clearInterval(pollInterval);
                             setIsCodeSynthesizing(false);

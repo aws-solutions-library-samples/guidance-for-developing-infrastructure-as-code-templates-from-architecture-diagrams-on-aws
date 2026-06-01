@@ -3,6 +3,7 @@ from code_generator_utils_v2 import *
 import asyncio
 import os
 import boto3 
+from botocore.config import Config
 from urllib.parse import urlparse
 import base64
 from utils2_v2 import *
@@ -10,7 +11,25 @@ import aiohttp
 import pprint
 import re
 
-bedrock_runtime = boto3.client('bedrock-runtime')
+# Centralized Bedrock model ID. Override with the BEDROCK_MODEL_ID env var
+# (e.g. set in the CDK Lambda environment) to point at a different model
+# without touching code.
+BEDROCK_MODEL_ID = os.environ.get(
+    'BEDROCK_MODEL_ID', 'us.anthropic.claude-sonnet-4-6'
+)
+
+# Bedrock invocations of Claude Sonnet 4 with image inputs and large
+# max_tokens (the resource_spec call uses 16,000) regularly exceed
+# botocore's default 60s read_timeout, surfacing as ReadTimeoutError in
+# CloudWatch. Bump the timeout and use adaptive retries so transient
+# throttling and 5xx responses are retried with backoff before failing the
+# Step Function task.
+_BEDROCK_CLIENT_CONFIG = Config(
+    connect_timeout=10,
+    read_timeout=600,
+    retries={'max_attempts': 5, 'mode': 'adaptive'},
+)
+bedrock_runtime = boto3.client('bedrock-runtime', config=_BEDROCK_CLIENT_CONFIG)
 
 
 def extract_json_from_response(text):
@@ -141,7 +160,7 @@ def generate_architecture_description(prompt, encoded_image):
         ],
     }
 
-    modelId = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
+    modelId = BEDROCK_MODEL_ID
     accept = 'application/json'
     contentType = 'application/json'
 
@@ -185,7 +204,7 @@ def generate_module_descriptions(architecture_description_dict , modules_descrip
         ],
     }
 
-    modelId = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
+    modelId = BEDROCK_MODEL_ID
     accept = 'application/json'
     contentType = 'application/json'
 
@@ -229,7 +248,7 @@ def generate_deployment_sequence(modules_description , deployment_sequence_promp
         ],
     }
 
-    modelId = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
+    modelId = BEDROCK_MODEL_ID
     accept = 'application/json'
     contentType = 'application/json'
 
@@ -260,7 +279,7 @@ def generate_resource_spec(architecture_description_dict, resource_spec_prompt):
     }
 
     response = bedrock_runtime.invoke_model(
-        modelId='us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+        modelId=BEDROCK_MODEL_ID,
         body=json.dumps(request_body),
     )
     response_body = json.loads(response['body'].read())

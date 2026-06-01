@@ -390,7 +390,12 @@ export class FrontEndStack extends cdk.Stack {
 
     // ===== Cognito (User Pool, Client, Domain) =====
     this.userPool = new cognito.UserPool(this, "UserPool", {
-      selfSignUpEnabled: true,
+      // Self-registration is disabled to satisfy the security guideline that
+      // public sign-up should not be open to anonymous users. New users must
+      // be created by an administrator via AdminCreateUser (AWS Console,
+      // `aws cognito-idp admin-create-user`, or IaC). Cognito will email a
+      // temporary password and force a password change on first sign-in.
+      selfSignUpEnabled: false,
       signInAliases: { email: true },
       autoVerify: { email: true },
       featurePlan: cognito.FeaturePlan.ESSENTIALS,
