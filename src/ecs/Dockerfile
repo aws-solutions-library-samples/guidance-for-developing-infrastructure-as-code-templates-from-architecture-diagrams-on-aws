@@ -1,6 +1,9 @@
 # Build stage
 FROM public.ecr.aws/docker/library/node:24-alpine AS build
 
+# Bust cache to ensure latest security patches (update date to force rebuild)
+ARG CACHE_BUST=2026-06-01
+
 # Upgrade Alpine system packages to patch known vulnerabilities
 RUN apk upgrade --no-cache
 
@@ -22,7 +25,10 @@ RUN npm run build
 # Production stage
 FROM public.ecr.aws/nginx/nginx:stable-alpine
 
-# Upgrade Alpine system packages to patch known vulnerabilities (zlib, openssl, libpng, musl, util-linux)
+# Bust cache to ensure latest security patches
+ARG CACHE_BUST=2026-06-01
+
+# Upgrade Alpine system packages to patch known vulnerabilities (libxml2 CVE-2026-6732, zlib, openssl, libpng, musl, util-linux)
 RUN apk upgrade --no-cache
 
 # # Copy the built assets from the build stage
