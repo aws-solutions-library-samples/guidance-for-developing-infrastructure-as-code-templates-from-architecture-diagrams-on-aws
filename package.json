@@ -59,7 +59,7 @@
     "cdk-monitoring-constructs": "9.22.2",
     "cdk-nag": "2.37.55",
     "constructs": "^10.6.0",
-    "react-router-dom": "^7.14.0",
+    "react-router-dom": "^7.16.0",
     "react-use": "^13.14.3",
     "source-map-support": "^0.5.21",
     "uuid": "^14.0.0"
