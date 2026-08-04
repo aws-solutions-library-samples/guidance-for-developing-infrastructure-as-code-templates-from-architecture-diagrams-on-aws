@@ -3,7 +3,7 @@ boto3==1.42.85
 urllib3==2.6.3
 pybase64==1.4.3
 botocore==1.42.85
-aiohttp==3.13.5
+aiohttp==3.14.3
 pyyaml==6.0.3
 strands-agents
 strands-agents-tools
