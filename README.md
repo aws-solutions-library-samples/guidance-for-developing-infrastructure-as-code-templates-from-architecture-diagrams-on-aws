@@ -87,7 +87,7 @@ Open the project folder in your IDE and edit the following files:
 - (OPTIONAL) package.json  - The config section of this file can be modified to change the Application Name
 
 ### 3. Make the script executable and source the variables
-Open your IDE CLI and run the follwing commands:
+Open your IDE CLI and run the following commands:
 ```bash
 chmod +x export_vars.sh
 source export_vars.sh
